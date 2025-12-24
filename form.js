@@ -23,7 +23,7 @@ document.getElementById("candidateForm").addEventListener("submit", function (e)
 
   console.log("FINAL JSON SENT:", JSON.stringify(candidate));
 
-  fetch("https://offlineform.onrender.com", {
+  fetch("https://offlineform.onrender.com/candidates", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(candidate)
