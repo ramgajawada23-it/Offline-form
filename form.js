@@ -15,8 +15,10 @@ document.getElementById("candidateForm").addEventListener("submit", function (e)
     city: document.getElementById("city").value,
     aadhaar: document.getElementById("aadhaar").value,
     bankAccount: document.getElementById("bankAccount").value,
-
-     titleId: Number(titleValue)
+    // titleId: Number(titleValue)
+    title: {
+      id: Number(titleValue)
+    }
   };
 
   console.log("FINAL JSON SENT:", JSON.stringify(candidate));
