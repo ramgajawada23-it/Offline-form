@@ -16,9 +16,7 @@ document.getElementById("candidateForm").addEventListener("submit", function (e)
     aadhaar: document.getElementById("aadhaar").value,
     bankAccount: document.getElementById("bankAccount").value,
 
-    title: {
-      id: Number(titleValue)
-    }
+     titleId: Number(titleValue)
   };
 
   console.log("FINAL JSON SENT:", JSON.stringify(candidate));
