@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Candidate Details</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="tailwind.css">
+
 </head>
 
 <body
@@ -129,10 +130,11 @@
 <script src="form.js"></script>
 <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js")
+  navigator.serviceWorker.register("/Offline-form/service-worker.js")
     .then(() => console.log("Service Worker Registered"))
     .catch(err => console.error("SW error:", err));
 }
 </script>
+
 </body>
 </html>
