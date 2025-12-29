@@ -1,88 +1,92 @@
-const API_URL = "https://offlineform.onrender.com/candidates";
+document.addEventListener("DOMContentLoaded", restoreForm);
 
-document.getElementById("candidateForm").addEventListener("submit", function (e) {
+document.getElementById("candidateForm").addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  const titleValue = document.getElementById("title").value;
-
   const candidate = {
-    fullName: document.getElementById("fullName").value,
-    email: document.getElementById("email").value,
-    phone: document.getElementById("phone").value,
-    dob: document.getElementById("date").value,
+    fullName: fullName.value,
+    email: email.value,
+    phone: phone.value,
+    dob: date.value,
     gender: document.querySelector('input[name="gender"]:checked')?.value,
-    state: document.getElementById("state").value,
-    city: document.getElementById("city").value,
-    aadhaar: document.getElementById("aadhaar").value,
-    bankAccount: document.getElementById("bankAccount").value,
-    title: {
-      id: Number(titleValue)
-    }
+    state: state.value,
+    city: city.value,
+    aadhaar: aadhaar.value,
+    bankAccount: bankAccount.value,
+    title: { id: Number(title.value) }
   };
 
-  // If ONLINE → send to server
-  if (navigator.onLine) {
-    sendToServer(candidate);
-  } 
-  // If OFFLINE → save locally
-  else {
-    saveOffline(candidate);
-    showStatus("Saved offline. Will sync when internet is back.", "orange");
+  saveFormLocally(candidate);
+
+  if (!navigator.onLine) {
+    await saveOffline(candidate);
+    alert("Form submitted. No internet");
+    return;
   }
+
+  sendToServer(candidate);
 });
 
-/* ---------------- FUNCTIONS ---------------- */
-
 function sendToServer(candidate) {
-  fetch(API_URL, {
+  fetch("https://offlineform.onrender.com/candidates", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(candidate)
   })
-    .then(res => {
-      if (!res.ok) throw new Error("Server error");
-      return res.json();
-    })
     .then(() => {
-      showStatus("Saved successfully ✅", "green");
-      document.getElementById("candidateForm").reset();
+      alert("Saved successfully");
+      localStorage.removeItem("draft");
+      clearForm();
     })
-    .catch(() => {
-      saveOffline(candidate);
-      showStatus("Saved offline (server unreachable)", "orange");
+    .catch(async () => {
+      await saveOffline(candidate);
+      alert("Saved offline");
     });
 }
 
-function saveOffline(candidate) {
-  let offlineData = JSON.parse(localStorage.getItem("offlineCandidates")) || [];
-  offlineData.push(candidate);
-  localStorage.setItem("offlineCandidates", JSON.stringify(offlineData));
-}
-
-function syncOfflineData() {
-  let offlineData = JSON.parse(localStorage.getItem("offlineCandidates")) || [];
-  if (offlineData.length === 0) return;
-
-  offlineData.forEach(candidate => {
-    fetch(API_URL, {
+/* =========================
+   AUTO SEND WHEN ONLINE
+========================= */
+window.addEventListener("online", async () => {
+  const offlineData = await getOfflineData();
+  for (const data of offlineData) {
+    await fetch("https://offlineform.onrender.com/candidates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(candidate)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error();
+      body: JSON.stringify(data)
     });
-  });
+  }
+  await clearOfflineData();
+  alert("Internet back. Offline data synced!");
+});
 
-  localStorage.removeItem("offlineCandidates");
-  showStatus("Offline data synced successfully 🔄", "green");
+/* =========================
+   FORM PERSISTENCE
+========================= */
+function saveFormLocally(data) {
+  localStorage.setItem("draft", JSON.stringify(data));
 }
 
-function showStatus(message, color) {
-  const status = document.getElementById("status");
-  status.innerText = message;
-  status.style.color = color;
+function restoreForm() {
+  const draft = localStorage.getItem("draft");
+  if (!draft) return;
+
+  const d = JSON.parse(draft);
+  fullName.value = d.fullName || "";
+  email.value = d.email || "";
+  phone.value = d.phone || "";
+  date.value = d.dob || "";
+  state.value = d.state || "";
+  city.value = d.city || "";
+  aadhaar.value = d.aadhaar || "";
+  bankAccount.value = d.bankAccount || "";
+  title.value = d.title?.id || "";
+
+  if (d.gender) {
+    document.querySelector(`input[name="gender"][value="${d.gender}"]`).checked = true;
+  }
 }
 
-/* Sync when internet comes back */
-window.addEventListener("online", syncOfflineData);
+function clearForm() {
+  document.getElementById("candidateForm").reset();
+}
