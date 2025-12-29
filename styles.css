@@ -40,7 +40,7 @@ input, select {
 
 input:focus, select:focus {
   outline: none;
-  border-color: #4f46e5;
+  border-color: #15456d;
 }
 
 .radio-group {

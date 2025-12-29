@@ -1,31 +1,23 @@
-const form = document.getElementById("candidateForm");
+document.addEventListener("DOMContentLoaded", () => {
+  restoreForm();
 
-const fullName = document.querySelector('input[name="fullName"]');
-const email = document.querySelector('input[name="email"]');
-const phone = document.querySelector('input[name="phone"]');
-const date = document.querySelector('input[name="dob"]');
-const state = document.querySelector('select[name="state"]');
-const city = document.querySelector('input[name="city"]');
-const aadhaar = document.querySelector('input[name="aadhaar"]');
-const bankAccount = document.querySelector('input[name="bankAccount"]');
-const title = document.getElementById("title");
+  document.getElementById("candidateForm").addEventListener("submit", submitForm);
+});
 
-document.addEventListener("DOMContentLoaded", restoreForm);
-
-form.addEventListener("submit", async function (e) {
+async function submitForm(e) {
   e.preventDefault();
 
   const candidate = {
-    fullName: fullName.value,
-    email: email.value,
-    phone: phone.value,
-    dob: date.value,
+    fullName: document.getElementById("fullName").value,
+    email: document.getElementById("email").value,
+    phone: document.getElementById("phone").value,
+    dob: document.getElementById("date").value,
     gender: document.querySelector('input[name="gender"]:checked')?.value,
-    state: state.value,
-    city: city.value,
-    aadhaar: aadhaar.value,
-    bankAccount: bankAccount.value,
-    title: { id: Number(title.value) }
+    state: document.getElementById("state").value,
+    city: document.getElementById("city").value,
+    aadhaar: document.getElementById("aadhaar").value,
+    bankAccount: document.getElementById("bankAccount").value,
+    title: { id: Number(document.getElementById("title").value) }
   };
 
   saveFormLocally(candidate);
@@ -37,7 +29,7 @@ form.addEventListener("submit", async function (e) {
   }
 
   sendToServer(candidate);
-});
+}
 
 function sendToServer(candidate) {
   fetch("https://offlineform.onrender.com/candidates", {
@@ -81,15 +73,15 @@ function restoreForm() {
 
   const d = JSON.parse(draft);
 
-  fullName.value = d.fullName || "";
-  email.value = d.email || "";
-  phone.value = d.phone || "";
-  date.value = d.dob || "";
-  state.value = d.state || "";
-  city.value = d.city || "";
-  aadhaar.value = d.aadhaar || "";
-  bankAccount.value = d.bankAccount || "";
-  title.value = d.title?.id || "";
+  document.getElementById("fullName").value = d.fullName || "";
+  document.getElementById("email").value = d.email || "";
+  document.getElementById("phone").value = d.phone || "";
+  document.getElementById("date").value = d.dob || "";
+  document.getElementById("state").value = d.state || "";
+  document.getElementById("city").value = d.city || "";
+  document.getElementById("aadhaar").value = d.aadhaar || "";
+  document.getElementById("bankAccount").value = d.bankAccount || "";
+  document.getElementById("title").value = d.title?.id || "";
 
   if (d.gender) {
     document.querySelector(
@@ -99,5 +91,5 @@ function restoreForm() {
 }
 
 function clearForm() {
-  form.reset();
+  document.getElementById("candidateForm").reset();
 }
