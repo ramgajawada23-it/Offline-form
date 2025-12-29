@@ -5,7 +5,7 @@ const FILES_TO_CACHE = [
     "/Offline-form/index.html",
     "/Offline-form/form.js",
     "/Offline-form/offline-db.js",
-    "/Offline-form/tailwind.css",
+    "/Offline-form/style.css",
     "/Offline-form/background.jpeg"
 ];
 
