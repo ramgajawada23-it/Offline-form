@@ -44,9 +44,8 @@ function sendToServer(candidate) {
     });
 }
 
-/* =========================
-   AUTO SEND WHEN ONLINE
-========================= */
+
+
 window.addEventListener("online", async () => {
   const offlineData = await getOfflineData();
   for (const data of offlineData) {
@@ -60,9 +59,8 @@ window.addEventListener("online", async () => {
   alert("Internet back. Offline data synced!");
 });
 
-/* =========================
-   FORM PERSISTENCE
-========================= */
+
+
 function saveFormLocally(data) {
   localStorage.setItem("draft", JSON.stringify(data));
 }

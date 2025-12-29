@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v2";
+const CACHE_NAME = "offline-form-v3";
 
 const FILES_TO_CACHE = [
     "/Offline-form/",
@@ -33,11 +33,16 @@ self.addEventListener("activate", event => {
 
 
 self.addEventListener("fetch", event => {
+  if (event.request.mode === "navigate") {
     event.respondWith(
-        fetch(event.request).catch(() =>
-            caches.match(event.request).then(res => {
-                return res || caches.match("/Offline-form/index.html");
-            })
-        )
+      caches.match("/Offline-form/index.html")
     );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
+  );
 });
