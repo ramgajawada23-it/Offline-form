@@ -127,5 +127,12 @@
 
 <script src="offline-db.js"></script>
 <script src="form.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js")
+    .then(() => console.log("Service Worker Registered"))
+    .catch(err => console.error("SW error:", err));
+}
+</script>
 </body>
 </html>
