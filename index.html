@@ -1,57 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Candidate Details</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Candidate Details</title>
+    <link rel="stylesheet" href="Style.css">
 </head>
 
 <body>
-  <div class="container">
-    <h2>Candidate Details</h2>
+    <div class="container">
+        <h2>Candidate Details</h2>
 
-    <form id="candidateForm">
-      <label>Title</label>
-      <select id="title" required>
-        <option value="">Select title</option>
-        <option value="1">Mr</option>
-        <option value="2">Ms</option>
-      </select>
+        <form id="candidateForm">
+            <label>Title</label>
+            <select id="title" required>
+                <option value="">Select title</option>
+                <option value="1">Mr</option>
+                <option value="2">Ms</option>
+            </select>
 
-      <input type="text" placeholder="Full Name" required>
-      <input type="email" placeholder="Email" required>
-      <input type="text" placeholder="Phone Number" required>
-      <input type="date" required>
+            <input type="text" placeholder="Full Name" required>
+            <input type="email" placeholder="Email" required>
+            <input type="text" placeholder="Phone Number" required>
+            <input type="date" required>
 
-      <label>Gender</label>
-      <div class="radio-group">
-        <label><input type="radio" name="gender" required> Male</label>
-        <label><input type="radio" name="gender" required> Female</label>
-      </div>
+            <label>Gender</label>
+            <div class="radio-group">
+                <label><input type="radio" name="gender" required> Male</label>
+                <label><input type="radio" name="gender" required> Female</label>
+            </div>
 
-      <select required>
-        <option value="">Select State</option>
-        <option>A</option>
-        <option>B</option>
-      </select>
+            <select required>
+                <option value="">Select State</option>
+                <option>A</option>
+                <option>B</option>
+            </select>
 
-      <input type="text" placeholder="City" required>
-      <input type="text" placeholder="Aadhaar Number" required>
-      <input type="text" placeholder="Bank Account Number" required>
+            <input type="text" placeholder="City" required>
+            <input type="text" placeholder="Aadhaar Number" required>
+            <input type="text" placeholder="Bank Account Number" required>
 
-      <button type="submit">Submit</button>
-    </form>
+            <button type="submit">Submit</button>
+        </form>
 
-    <p id="status"></p>
-  </div>
+        <p id="status"></p>
+    </div>
 
-  <script src="offline-db.js"></script>
-  <script src="form.js"></script>
+    <script src="offline-db.js"></script>
+    <script src="form.js"></script>
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/Offline-form/service-worker.js");
-    }
-  </script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/Offline-form/service-worker.js");
+        }
+    </script>
 </body>
+
 </html>

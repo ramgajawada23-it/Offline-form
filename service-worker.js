@@ -6,7 +6,9 @@ const FILES_TO_CACHE = [
     "/Offline-form/form.js",
     "/Offline-form/offline-db.js",
     "/Offline-form/style.css",
-    "/Offline-form/background.jpeg"
+    "/Offline-form/background.jpeg",
+    "/Offline-form/BG2.jpeg",
+    "/Offline-form/BG1.jpg",
 ];
 
 
@@ -39,4 +41,3 @@ self.addEventListener("fetch", event => {
         )
     );
 });
-
