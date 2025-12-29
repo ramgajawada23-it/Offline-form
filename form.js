@@ -1,6 +1,18 @@
+const form = document.getElementById("candidateForm");
+
+const fullName = document.querySelector('input[name="fullName"]');
+const email = document.querySelector('input[name="email"]');
+const phone = document.querySelector('input[name="phone"]');
+const date = document.querySelector('input[name="dob"]');
+const state = document.querySelector('select[name="state"]');
+const city = document.querySelector('input[name="city"]');
+const aadhaar = document.querySelector('input[name="aadhaar"]');
+const bankAccount = document.querySelector('input[name="bankAccount"]');
+const title = document.getElementById("title");
+
 document.addEventListener("DOMContentLoaded", restoreForm);
 
-document.getElementById("candidateForm").addEventListener("submit", async function (e) {
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const candidate = {
@@ -44,10 +56,9 @@ function sendToServer(candidate) {
     });
 }
 
-
-
 window.addEventListener("online", async () => {
   const offlineData = await getOfflineData();
+
   for (const data of offlineData) {
     await fetch("https://offlineform.onrender.com/candidates", {
       method: "POST",
@@ -55,11 +66,10 @@ window.addEventListener("online", async () => {
       body: JSON.stringify(data)
     });
   }
+
   await clearOfflineData();
   alert("Internet back. Offline data synced!");
 });
-
-
 
 function saveFormLocally(data) {
   localStorage.setItem("draft", JSON.stringify(data));
@@ -70,6 +80,7 @@ function restoreForm() {
   if (!draft) return;
 
   const d = JSON.parse(draft);
+
   fullName.value = d.fullName || "";
   email.value = d.email || "";
   phone.value = d.phone || "";
@@ -81,10 +92,12 @@ function restoreForm() {
   title.value = d.title?.id || "";
 
   if (d.gender) {
-    document.querySelector(`input[name="gender"][value="${d.gender}"]`).checked = true;
+    document.querySelector(
+      `input[name="gender"][value="${d.gender}"]`
+    ).checked = true;
   }
 }
 
 function clearForm() {
-  document.getElementById("candidateForm").reset();
+  form.reset();
 }

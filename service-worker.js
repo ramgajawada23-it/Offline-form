@@ -1,16 +1,16 @@
-const CACHE_NAME = "offline-form-v3";
+
+
+const CACHE_NAME = "offline-form-v4";
 
 const FILES_TO_CACHE = [
     "/Offline-form/",
     "/Offline-form/index.html",
+    "/Offline-form/style.css",
     "/Offline-form/form.js",
     "/Offline-form/offline-db.js",
-    "/Offline-form/style.css",
-    "/Offline-form/background.jpeg",
     "/Offline-form/BG2.jpeg",
     "/Offline-form/BG1.jpg",
 ];
-
 
 self.addEventListener("install", event => {
     event.waitUntil(
@@ -19,30 +19,24 @@ self.addEventListener("install", event => {
     self.skipWaiting();
 });
 
-
 self.addEventListener("activate", event => {
     event.waitUntil(
         caches.keys().then(keys =>
-            Promise.all(
-                keys.map(key => key !== CACHE_NAME && caches.delete(key))
-            )
+            Promise.all(keys.map(key => key !== CACHE_NAME && caches.delete(key)))
         )
     );
     self.clients.claim();
 });
 
-
 self.addEventListener("fetch", event => {
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      caches.match("/Offline-form/index.html")
-    );
-    return;
-  }
+    if (event.request.mode === "navigate") {
+        event.respondWith(
+            caches.match("/Offline-form/index.html")
+        );
+        return;
+    }
 
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
-  );
+    event.respondWith(
+        caches.match(event.request).then(res => res || fetch(event.request))
+    );
 });
