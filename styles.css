@@ -11,60 +11,145 @@ body {
   align-items: center;
 }
 
+/* MAIN CONTAINER */
 .container {
-  background: rgba(255, 255, 255, 0.185);
-  padding: 25px;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  max-width: 900px;
+  margin: 40px auto;
+  background: #ffffff52;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
+/* HEADINGS */
 h2 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  color: #333;
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.section-title {
+  margin-top: 35px;
+  margin-bottom: 15px;
+  color: #444;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 5px;
 }
 
-input, select {
+/* LABELS */
+label {
+  font-weight: 600;
+  margin-top: 10px;
+  display: block;
+}
+
+/* INPUTS & SELECTS */
+input,
+select {
+  width: 100%;
   padding: 10px;
+  margin-top: 6px;
+  border: 1px solid #ccc;
   border-radius: 6px;
-  border: 1px solid #cccccc00;
   font-size: 14px;
 }
 
-input:focus, select:focus {
-  outline: none;
-  border-color: #15456d;
+/* NAME + CONTACT GROUP */
+.name-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
+.grid-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+/* RADIO BUTTONS */
 .radio-group {
   display: flex;
-  gap: 15px;
+  gap: 20px;
+  margin: 10px 0 15px 0;
 }
 
-button {
-  margin-top: 10px;
-  padding: 12px;
-  border: none;
-  background: #08748f;
+.radio-group input {
+  width: auto;
+  margin-right: 5px;
+}
+
+/* FAMILY TABLE */
+.family-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  
+}
+
+.section-title{
+  color: #000000;
+}
+
+.family-table th,
+.family-table td {
+  border: 1px solid #cccccc00;
+  padding: 8px;
+  text-align: center;
+}
+
+.family-table th {
+  background: #ffffff;
+  font-weight: bold;
+}
+
+.family-table input,
+.family-table select {
+  width: 100%;
+  padding: 6px;
+  font-size: 13px;
+}
+
+/* ADD ROW BUTTON */
+.add-row {
+  margin-top: 15px;
+}
+
+.add-row button {
+  background: #47749b;
   color: white;
-  font-size: 16px;
-  border-radius: 6px;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
   cursor: pointer;
 }
 
-button:hover {
-  background: #094c61;
+.add-row button:hover {
+  background: #5a6268;
 }
 
+/* SUBMIT BUTTON */
+button[type="submit"] {
+  margin-top: 25px;
+  width: 100%;
+  background: #47749b;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background: #2857be;
+}
+
+/* STATUS MESSAGE */
 #status {
+  margin-top: 15px;
   text-align: center;
-  margin-top: 10px;
   font-weight: bold;
 }

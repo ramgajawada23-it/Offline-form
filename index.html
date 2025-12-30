@@ -12,25 +12,26 @@
         <h2>Candidate Details</h2>
 
         <form id="candidateForm">
-
+            <!-- details section -->
             <label>Title</label>
             <select id="title" name="titleId" required>
                 <option value="">Select title</option>
                 <option value="1">Mr</option>
                 <option value="2">Ms</option>
             </select>
-
-            <input id="fullName" name="fullName" type="text" placeholder="Full Name" required>
-            <input id="email" name="email" type="email" placeholder="Email" required>
+            <div class="name-group">
+                <input id="fullName" name="fullName" type="text" placeholder="Full Name" required>
+                <input id="email" name="email" type="email" placeholder="Email" required>
+            
             <input id="phone" name="phone" type="text" placeholder="Phone Number" required>
             <input id="date" name="dob" type="date" required>
-
+            </div>
             <label>Gender</label>
             <div class="radio-group">
                 <input type="radio" name="gender" value="Male" required> Male
                 <input type="radio" name="gender" value="Female" required> Female
             </div>
-
+            <div class="grid-group">
             <select id="state" name="state" required>
                 <option value="">Select State</option>
                 <option value="A">A</option>
@@ -40,7 +41,79 @@
             <input id="city" name="city" type="text" placeholder="City" required>
             <input id="aadhaar" name="aadhaar" type="text" placeholder="Aadhaar Number" required>
             <input id="bankAccount" name="bankAccount" type="text" placeholder="Bank Account Number" required>
+            </div>
+            <!-- FAmily section -->
+            <h3 class="section-title">Details of Family Members</h3>
+            <table class="family-table">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Relationship</th>
+                        <th>Name</th>
+                        <th>DOB</th>
+                        <th>Dependent</th>
+                        <th>Occupation</th>
+                        <th>Income</th>
+                    </tr>
+                </thead>
 
+                <tbody id="familyTableBody">
+                    <tr>
+                        <td>1</td>
+                        <td>
+                            <select name="family[0][relationship]">
+                                <option value="">Select</option>
+                                <option>Father</option>
+                                <option>Mother</option>
+                                <option>Brother</option>
+                                <option>Sister</option>
+                                <option>Spouse</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="family[0][name]"></td>
+                        <td><input type="date" name="family[0][dob]"></td>
+                        <td>
+                            <select name="family[0][dependent]">
+                                <option value="">Select</option>
+                                <option>Yes</option>
+                                <option>No</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="family[0][occupation]"></td>
+                        <td><input type="number" name="family[0][income]"></td>
+                    </tr>
+
+                    <tr>
+                        <td>2</td>
+                        <td>
+                            <select name="family[1][relationship]">
+                                <option value="">Select</option>
+                                <option>Father</option>
+                                <option>Mother</option>
+                                <option>Brother</option>
+                                <option>Sister</option>
+                                <option>Spouse</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="family[1][name]"></td>
+                        <td><input type="date" name="family[1][dob]"></td>
+                        <td>
+                            <select name="family[1][dependent]">
+                                <option value="">Select</option>
+                                <option>Yes</option>
+                                <option>No</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="family[1][occupation]"></td>
+                        <td><input type="number" name="family[1][income]"></td>
+                    </tr>
+
+                </tbody>
+            </table>
+            <div class="add-row">
+                <button type="button" onclick="addFamilyRow()">Add Row</button>
+                <br><br>
+            </div>
             <button type="submit">Submit</button>
         </form>
 
