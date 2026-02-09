@@ -1,5 +1,6 @@
 // form.js
 let isOnline = navigator.onLine;
+let autosaveInterval = null; // Declared to prevent ReferenceError (autosave now event-based)
 
 function getCandidateFullName() {
   const fn = document.getElementById("firstName")?.value || "";
@@ -696,9 +697,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function stopAutosave() {
     // No-op: Interval removed in favor of event-based saving
   }
-
-  // store it globally so other functions can clear it
-  window._autosaveInterval = autosaveInterval;
 
   if (mobile) {
     const mobile1 = document.getElementById("mobile1");
