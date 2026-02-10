@@ -228,7 +228,7 @@ async function syncOfflineSubmissions() {
   for (const item of queue) {
     try {
       const res = await fetch(
-        "https://offlineform.onrender.com/api/candidates",
+        `${API_BASE}/api/drafts?mobile=${mobile}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2487,7 +2487,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // const res = await fetch("/api/submit", {\\\\\\\\\\\\\\\\\\\\\>>>>>>>>>>>><<<<<<<<<<<<<>/..........
-      const res = await fetch("https://offlineform.onrender.com/api/candidates", {
+      const res = await fetch(`${API_BASE}/api/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -2552,7 +2552,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const payload of pending) {
       try {
-        const res = await fetch("https://offlineform.onrender.com/api/candidates", {
+        const res = await fetch(`${API_BASE}/api/candidates`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
