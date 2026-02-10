@@ -228,11 +228,11 @@ async function syncOfflineSubmissions() {
   for (const item of queue) {
     try {
       const res = await fetch(
-        `${API_BASE}/api/drafts?mobile=${mobile}`,
+        `${API_BASE}/api/drafts?mobile=${encodeURIComponent(item.mobile)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item.data)
+          body: JSON.stringify(item)
         }
       );
       if (!res.ok) throw new Error("Upload failed");
@@ -571,19 +571,24 @@ function isSkippable(el) {
 
 let serverDraft = null;
 
-
-async function fetchServerDraft(mobile) {
+async function loadDraft(mobile) {
   try {
-    const res = await fetch(
+    const response = await fetch(
       `${API_BASE}/api/drafts?mobile=${encodeURIComponent(mobile)}`
     );
-    if (!res.ok) return null;
-    return await res.json();
+
+    if (response.status === 204) {
+      return null; // no draft found
+    }
+
+    if (!response.ok) return null;
+
+    const serverDraft = await response.json(); // ✅ DEFINED HERE
+    return serverDraft;
   } catch {
     return null;
   }
 }
-
 
 /* =========================================================
   MAIN
@@ -593,7 +598,6 @@ let steps = [];
 document.addEventListener("DOMContentLoaded", () => {
   steps = document.querySelectorAll(".form-step");
 
-  // ✅ DEFINE ONCE – GLOBAL TO THIS SCOPE
   const loggedInMobile =
     sessionStorage.getItem("loggedInMobile") ||
     localStorage.getItem("loggedInMobile");
@@ -608,7 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await openDB();
       setupEducationTable();
       // 1️⃣ Try server first
-      serverDraft = await fetchServerDraft(loggedInMobile);
+      serverDraft = await loadDraft(loggedInMobile);
 
       if (serverDraft?.formData) {
         const parsed = JSON.parse(serverDraft.formData);
@@ -2512,27 +2516,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (formStatus === "NEW") {
       sessionStorage.removeItem("serverDraft");
       await clearDraft(); // clear IndexedDB draft
-    }
-
-    let draft = null;
-
-    // 1️⃣ Server draft (cross-device)
-    if (serverDraft) {
-      draft = JSON.parse(serverDraft);
-    }
-
-    // 2️⃣ Local IndexedDB draft fallback
-    if (!draft) {
-      draft = await loadDraftFromDB();
-    }
-
-    if (!draft) return;
-
-    // Unified restoration
-    await restoreDraftState(draft);
-
-    if (typeof draft.step === "number") {
-      currentStep = draft.step;
     }
 
     updateUI();
