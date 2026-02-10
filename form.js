@@ -1,6 +1,7 @@
 // form.js
 let isOnline = navigator.onLine;
-let autosaveInterval = null; // Declared to prevent ReferenceError (autosave now event-based)
+
+window.debouncedSaveDraft = () => {}; // Prevents rare undefined errors before initialization
 
 function getCandidateFullName() {
   const fn = document.getElementById("firstName")?.value || "";
@@ -543,24 +544,28 @@ async function fetchServerDraft(mobile) {
 }
 
 async function saveDraft(draft) {
-  // 1️⃣ Always save locally
-  await saveDraftToDB(draft);
+  // ALWAYS save parsed object locally
+  if (draft?.formData) {
+    try {
+      const parsed = JSON.parse(draft.formData);
+      await saveDraftToDB(parsed);
+    } catch {
+      console.warn("Invalid formData JSON, skipping local save");
+    }
+  }
 
-  // 2️⃣ Stop if offline
   if (!navigator.onLine) return;
 
-  // 3️⃣ Sync to server
   try {
     await fetch("https://offlineform.onrender.com/api/drafts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft)
     });
-  } catch (e) {
-    console.warn("Server draft save failed, local copy kept");
+  } catch {
+    console.warn("Server draft save failed");
   }
 }
-
 
 
 /* =========================================================
@@ -571,22 +576,29 @@ let steps = [];
 document.addEventListener("DOMContentLoaded", () => {
   steps = document.querySelectorAll(".form-step");
 
+  // ✅ DEFINE ONCE – GLOBAL TO THIS SCOPE
+  const loggedInMobile =
+    sessionStorage.getItem("loggedInMobile") ||
+    localStorage.getItem("loggedInMobile");
+
+  if (!loggedInMobile) {
+    window.location.href = "login.html";
+    return;
+  }
+
   (async () => {
     try {
       await openDB();
       console.log("IndexedDB ready");
 
-      const mobile = sessionStorage.getItem("loggedInMobile");
-
-      if (mobile) {
-        const serverDraft = await fetchServerDraft(mobile);
-        if (serverDraft) {
-          await restoreDraftState(serverDraft);
-          await saveDraftToDB(serverDraft); // sync local copy
-        } else {
-          const localDraft = await loadDraftFromDB();
-          if (localDraft) await restoreDraftState(localDraft);
-        }
+      const serverDraft = await fetchServerDraft(loggedInMobile);
+      if (serverDraft?.formData) {
+        const parsed = JSON.parse(serverDraft.formData);
+        await restoreDraftState(parsed);
+        await saveDraftToDB(parsed); // sync local copy
+      } else {
+        const localDraft = await loadDraftFromDB();
+        if (localDraft) await restoreDraftState(localDraft);
       }
     } catch (err) {
       console.error("Draft restore failed", err);
@@ -600,7 +612,6 @@ document.addEventListener("DOMContentLoaded", () => {
   window._debugCurrentStep = () => currentStep;
   setupEducationTable();
   const formStatus = sessionStorage.getItem("formStatus");
-  const mobile = sessionStorage.getItem("loggedInMobile");
 
 
   function addEducationRow(data = null, showDelete = true) {
@@ -698,24 +709,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // No-op: Interval removed in favor of event-based saving
   }
 
-  if (mobile) {
+  if (loggedInMobile) {
     const mobile1 = document.getElementById("mobile1");
     const mobile2 = document.getElementById("mobile2");
 
     if (mobile1) {
-      mobile1.value = mobile;
+      mobile1.value = loggedInMobile;
       mobile1.readOnly = true;
     }
 
     if (mobile2) {
-      mobile2.value = mobile;
+      mobile2.value = loggedInMobile;
       mobile2.readOnly = true;
     }
-  }
-
-  if (!loggedInMobile) {
-    window.location.href = "./login.html";
-    return;
   }
 
   // restoreDraft(); // Removed (using async loadDraftFromDB on window.load)
@@ -765,7 +771,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let draftTimer;
   function debouncedSaveDraft() {
     if (isSubmitting) return;
-    if (!sessionStorage.getItem("loggedInMobile")) return;
+    if (!loggedInMobile) return;
     if (typeof saveDraft !== "function") return;
 
     clearTimeout(draftTimer);
@@ -774,16 +780,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const educationalParams = getEducationRowsData();
 
       saveDraft({
-        id: sessionStorage.getItem("loggedInMobile"),
-        mobile: sessionStorage.getItem("loggedInMobile"),
-        step: currentStep,
-        fields: {
-          ...data,
-          pan: realPan || "",
-          aadhaar: realAadhaar || "",
-          bankAccount: realBankAccount || ""
-        },
-        educationRows: educationalParams
+        mobile: loggedInMobile,
+        formData: JSON.stringify({
+          step: currentStep,
+          fields: {
+            ...data,
+            pan: realPan || "",
+            aadhaar: realAadhaar || "",
+            bankAccount: realBankAccount || ""
+          },
+          educationRows: educationalParams
+        })
       });
 
     }, 500);
@@ -931,8 +938,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ["input", "change"].forEach(evt => {
     document
       .querySelector("#candidateForm")
-      ?.addEventListener("input", debouncedSaveDraft);
-
+      ?.addEventListener(evt, debouncedSaveDraft);
   });
 
   const newFormBtn = document.getElementById("newFormBtn");
@@ -1633,8 +1639,6 @@ document.addEventListener("DOMContentLoaded", () => {
         showError(income, "Income is required", silent);
         ok = false;
       }
-
-
       if (!dep?.value) {
         showError(dep, "Dependent status required", silent);
         ok = false;
@@ -1659,7 +1663,7 @@ document.addEventListener("DOMContentLoaded", () => {
         seen.add(rel.value);
       }
 
-      // ✅ Parent age validation (FIXED)
+      // ✅ Parent age validation
       if (
         (rel?.value === "Father" || rel?.value === "Mother") &&
         dob?.value &&
@@ -1672,22 +1676,6 @@ document.addEventListener("DOMContentLoaded", () => {
           showError(dob, "Parent must be older than candidate", silent);
           ok = false;
         }
-      }
-
-      // Dependent validation
-      if (!dep?.value) {
-        showError(dep, "Select dependent status", silent);
-        ok = false;
-      }
-
-      if (dep?.value === "Yes" && Number(income?.value) > 0) {
-        showError(income, "If YES income must be 0 for dependents", silent);
-        ok = false;
-      }
-
-      if (income && Number(income.value) < 0) {
-        showError(income, "Income cannot be negative", silent);
-        ok = false;
       }
 
     });
@@ -2094,7 +2082,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* ===== IF YES → LOAN DETAILS REQUIRED ===== */
     if (loanAvailed?.value === "Yes") {
-      loanFields.style.display = "grid";
+      loanFields && (loanFields.style.display = "grid");
 
       if (!loanPurpose?.value.trim()) {
         showError(loanPurpose, "Loan purpose is required", silent);
@@ -2200,7 +2188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     /* ================= LOAN (ONLY IF YES) ================= */
     if (loanAvailed?.value === "Yes" && loanFields) {
-      loanFields.style.display = "grid";
+      loanFields && (loanFields.style.display = "grid");
 
       if (!loanPurpose?.value.trim()) {
         showError(loanPurpose, "Loan purpose required", silent);
