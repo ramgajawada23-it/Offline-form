@@ -1,7 +1,9 @@
 // form.js
 let isOnline = navigator.onLine;
 
-window.debouncedSaveDraft = () => {}; // Prevents rare undefined errors before initialization
+window.debouncedSaveDraft = function () {
+  console.warn("debouncedSaveDraft called before initialization");
+};
 
 function getCandidateFullName() {
   const fn = document.getElementById("firstName")?.value || "";
@@ -11,6 +13,7 @@ function getCandidateFullName() {
 /* =========================================================
   GLOBAL HELPERS
 ========================================================= */
+const API_BASE = "https://offlineform.onrender.com";
 window.addEventListener("online", () => {
   isOnline = true;
   console.log("Back online");
@@ -22,7 +25,36 @@ window.addEventListener("offline", () => {
   console.log("You are Offline. You can continue filling the form");
 });
 
-// window.load listener removed - IIFE handles initialization
+let lastDraftHash = "";
+
+async function saveDraft(draft) {
+  if (!draft?.formData) return;
+
+  const hash = draft.formData;
+  if (hash === lastDraftHash) return;
+  lastDraftHash = hash;
+
+  // Always save locally
+  try {
+    const parsed = JSON.parse(draft.formData);
+    await saveDraftToDB(parsed);
+  } catch {
+    console.warn("Invalid formData JSON, skipping local save");
+  }
+
+  if (!navigator.onLine) return;
+
+  try {
+    await fetch(`${API_BASE}/api/drafts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft)
+    });
+  } catch {
+    console.warn("Server draft save failed");
+  }
+}
+
 
 function isVisible(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
@@ -50,33 +82,39 @@ async function restoreDraftState(data) {
 
   isRestoring = true;
 
-  // 1. Restore Dynamic Family Rows
-  if (data.fields) {
-    restoreFamilyRows(data.fields);
-  }
+  try {
+    // 1. Restore Dynamic Family Rows
+    if (data.fields) {
+      restoreFamilyRows(data.fields);
+    }
 
-  // 2. Restore Education Rows
-  if (data.educationRows) {
-    restoreEducationRows(data.educationRows);
-  }
+    // 2. Restore Education Rows
+    if (data.educationRows) {
+      restoreEducationRows(data.educationRows);
+    }
 
-  // 3. Fill Form Data
-  if (data.fields) {
-    restoreFormData(data.fields);
-    restoreMaskedKYC(data.fields);
-  }
+    // 3. Fill Form Data
+    if (data.fields) {
+      restoreFormData(data.fields);
+      restoreMaskedKYC(data.fields);
+    }
 
-  // 4. Update UI States
-  recalculateAge();
-  toggleIllnessFields();
-  toggleMaritalFields();
-  toggleExperienceDependentSections();
+    // 4. Update UI States
+    recalculateAge();
+    toggleIllnessFields();
+    toggleMaritalFields();
+    toggleExperienceDependentSections();
 
-  isRestoring = false;
+    if (data.educationRows) {
+      setTimeout(() => restoreEducationRows(data.educationRows), 0);
+    }
 
-  // 5. Restore current step visually
-  if (typeof data.step === "number") {
-    showStep(data.step);
+    // 5. Restore current step visually
+    if (typeof data.step === "number") {
+      showStep(data.step);
+    }
+  } finally {
+    isRestoring = false;
   }
 }
 
@@ -534,36 +572,12 @@ function isSkippable(el) {
 async function fetchServerDraft(mobile) {
   try {
     const res = await fetch(
-      `https://offlineform.onrender.com/api/drafts?mobile=${mobile}`
+      `${API_BASE}/api/drafts?mobile=${encodeURIComponent(mobile)}`
     );
     if (!res.ok) return null;
     return await res.json();
   } catch {
     return null;
-  }
-}
-
-async function saveDraft(draft) {
-  // ALWAYS save parsed object locally
-  if (draft?.formData) {
-    try {
-      const parsed = JSON.parse(draft.formData);
-      await saveDraftToDB(parsed);
-    } catch {
-      console.warn("Invalid formData JSON, skipping local save");
-    }
-  }
-
-  if (!navigator.onLine) return;
-
-  try {
-    await fetch("https://offlineform.onrender.com/api/drafts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft)
-    });
-  } catch {
-    console.warn("Server draft save failed");
   }
 }
 
@@ -586,31 +600,35 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  (async () => {
+  (async function restoreDraftFlow() {
     try {
       await openDB();
-      console.log("IndexedDB ready");
-
+      setupEducationTable();
+      // 1️⃣ Try server first
       const serverDraft = await fetchServerDraft(loggedInMobile);
+
       if (serverDraft?.formData) {
         const parsed = JSON.parse(serverDraft.formData);
         await restoreDraftState(parsed);
-        await saveDraftToDB(parsed); // sync local copy
-      } else {
-        const localDraft = await loadDraftFromDB();
-        if (localDraft) await restoreDraftState(localDraft);
+        await saveDraftToDB(parsed); // sync offline copy
+        return;
+      }
+
+      // 2️⃣ Fallback to IndexedDB
+      const localDraft = await loadDraftFromDB();
+      if (localDraft) {
+        await restoreDraftState(localDraft);
       }
     } catch (err) {
-      console.error("Draft restore failed", err);
+      console.error("Draft restore failed:", err);
     }
   })();
-
 
   let currentStep = 0;
   let isSubmitting = false;
 
   window._debugCurrentStep = () => currentStep;
-  setupEducationTable();
+
   const formStatus = sessionStorage.getItem("formStatus");
 
 
@@ -668,7 +686,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Old saveEducationRows (localStorage) removed
 
 
-  function restoreEducationRows(saved = []) {
+  window.restoreEducationRows = function (saved = []) {
     const tbody = document.getElementById("educationTableBody");
     tbody.innerHTML = "";
 
@@ -897,6 +915,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (error) error.style.display = "none";
+    document
+      .querySelectorAll('#languageSection .error')
+      .forEach(e => e.classList.remove("error"));
+
     return true;
   }
 
@@ -1837,12 +1859,14 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       if (extraError) extraError.style.display = "block";
 
-      // ✅ mark ONE real field as error so focus works
-      showError(literary || sports || hobbies,
-        "Enter at least one activity", silent);
+      const target = literary || sports || hobbies;
+      if (target) {
+        showError(target, "Enter at least one activity", silent);
+      }
 
       ok = false;
-    } else {
+    }
+    else {
       if (extraError) extraError.style.display = "none";
     }
 
