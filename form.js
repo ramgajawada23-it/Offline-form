@@ -569,7 +569,7 @@ function isSkippable(el) {
   );
 }
 
-let serverDraft = null; 
+let serverDraft = null;
 
 
 async function fetchServerDraft(mobile) {
@@ -608,7 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await openDB();
       setupEducationTable();
       // 1️⃣ Try server first
-      const serverDraft = await fetchServerDraft(loggedInMobile);
+      serverDraft = await fetchServerDraft(loggedInMobile);
 
       if (serverDraft?.formData) {
         const parsed = JSON.parse(serverDraft.formData);
@@ -887,11 +887,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Global validateStep3Languages function with silent parameter support
   function validateStep3Languages(silent = false) {
     const checked = document.querySelectorAll(
-      '#languageSection input[type="checkbox"]:checked'
+      '#languageTable input[type="checkbox"]:checked'
     );
 
     const manualInputs = document.querySelectorAll(
-      '#extraLanguages .language-input'
+      '#languageTable input[type="text"][name*="name"]'
     );
 
     const error = document.getElementById("languageError");
@@ -902,18 +902,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (checked.length === 0 && !hasManualValue) {
-      if (!silent && error) error.style.display = "block";
-
       if (!silent) {
+        if (error) error.style.display = "block";
+
         const first = document.querySelector(
-          '#languageSection input[type="checkbox"], #extraLanguages .language-input'
+          '#languageTable input[type="checkbox"], #languageTable input[type="text"][name*="name"]'
         );
         if (first) {
           first.classList.add("error");
           first.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
-
       return false;
     }
 
@@ -2524,7 +2523,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2️⃣ Local IndexedDB draft fallback
     if (!draft) {
-      draft = await loadDraft();
+      draft = await loadDraftFromDB();
     }
 
     if (!draft) return;
