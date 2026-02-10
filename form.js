@@ -30,13 +30,15 @@ let lastDraftHash = "";
 async function saveDraft(draft) {
   if (!draft?.formData) return;
 
-  const hash = draft.formData;
+  const hash = JSON.stringify(draft);
   if (hash === lastDraftHash) return;
   lastDraftHash = hash;
 
   // Always save locally
   try {
-    const parsed = JSON.parse(draft.formData);
+    const parsed = typeof draft.formData === "string"
+      ? JSON.parse(draft.formData)
+      : draft.formData;
     await saveDraftToDB(parsed);
   } catch {
     console.warn("Invalid formData JSON, skipping local save");
@@ -82,41 +84,40 @@ async function restoreDraftState(data) {
 
   isRestoring = true;
 
-  try {
-    // 1. Restore Dynamic Family Rows
-    if (data.fields) {
-      restoreFamilyRows(data.fields);
-    }
-
-    // 2. Restore Education Rows
-    if (data.educationRows) {
-      restoreEducationRows(data.educationRows);
-    }
-
-    // 3. Fill Form Data
-    if (data.fields) {
-      restoreFormData(data.fields);
-      restoreMaskedKYC(data.fields);
-    }
-
-    // 4. Update UI States
-    recalculateAge();
-    toggleIllnessFields();
-    toggleMaritalFields();
-    toggleExperienceDependentSections();
-
-    if (data.educationRows) {
-      setTimeout(() => restoreEducationRows(data.educationRows), 0);
-    }
-
-    // 5. Restore current step visually
-    if (typeof data.step === "number") {
-      showStep(data.step);
-    }
-  } finally {
-    isRestoring = false;
+  // 1️⃣ Restore dynamic rows FIRST (DOM creation)
+  if (data.fields) {
+    restoreFamilyRows(data.fields);
   }
+
+  // 2️⃣ Delay value restoration until DOM is ready
+  setTimeout(() => {
+    try {
+      if (data.fields) {
+        restoreFormData(data.fields);
+        restoreMaskedKYC(data.fields);
+      }
+
+      if (data.educationRows) {
+        restoreEducationRows(data.educationRows);
+      }
+
+      // Derived UI logic
+      recalculateAge();
+      toggleIllnessFields();
+      toggleMaritalFields();
+      toggleExperienceDependentSections();
+      validateStep3Languages(true);
+
+      // 3️⃣ Show step ONLY AFTER restore
+      if (typeof data.step === "number") {
+        showStep(data.step);
+      }
+    } finally {
+      isRestoring = false; // ✅ ONLY HERE
+    }
+  }, 0);
 }
+
 
 function restoreFamilyRows(fields) {
   const tbody = document.getElementById("familyTableBody");
@@ -141,24 +142,35 @@ function restoreFamilyRows(fields) {
   }
 
   // Update relationship options after restoring rows
-  setTimeout(updateFamilyRelationshipOptions, 0);
+  setTimeout(() => {
+    updateFamilyRelationshipOptions();
+    const tbody = document.getElementById("familyTableBody");
+    if (tbody) tbody.querySelectorAll("tr").forEach(bindFamilyRowAutosave);
+  }, 0);
 }
 
 function restoreFormData(data) {
   if (!data) return;
 
-  document.querySelectorAll("input, select, textarea").forEach(el => {
-    if (!el.name || !(el.name in data)) return;
+  Object.entries(data).forEach(([key, value]) => {
+    // PAN & Aadhaar & Bank Account handled separately by restoreMaskedKYC
+    if (key === "pan" || key === "aadhaar" || key === "bankAccount") return;
 
-    // PAN & Aadhaar & Bank Account handled separately
-    if (el.name === "pan" || el.name === "aadhaar" || el.id === "panDisplay" || el.id === "aadhaarDisplay" || el.id === "bankAccountDisplay") return;
-
-    if (el.type === "radio") {
-      el.checked = el.value === data[el.name];
-    } else if (el.type === "checkbox") {
-      el.checked = !!data[el.name];
-    } else {
-      el.value = data[el.name];
+    const field = document.querySelector(`[name="${key}"]`);
+    if (field) {
+      let target = field;
+      if (field.type === "radio") {
+        const matching = document.querySelector(`input[name="${key}"][value="${value}"]`);
+        if (matching) {
+          matching.checked = true;
+          target = matching;
+        }
+      } else if (field.type === "checkbox") {
+        field.checked = !!value;
+      } else {
+        field.value = value || "";
+      }
+      target.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
 
@@ -167,6 +179,7 @@ function restoreFormData(data) {
   toggleIllnessFields();
   toggleMaritalFields();
   toggleExperienceDependentSections();
+  
 }
 
 function restoreMaskedKYC(data) {
@@ -583,7 +596,7 @@ async function loadDraft(mobile) {
 
     if (!response.ok) return null;
 
-    const serverDraft = await response.json(); // ✅ DEFINED HERE
+    serverDraft = await response.json(); // ✅ DEFINED HERE
     return serverDraft;
   } catch {
     return null;
@@ -615,7 +628,10 @@ document.addEventListener("DOMContentLoaded", () => {
       serverDraft = await loadDraft(loggedInMobile);
 
       if (serverDraft?.formData) {
-        const parsed = JSON.parse(serverDraft.formData);
+        const parsed = typeof serverDraft.formData === "string"
+          ? JSON.parse(serverDraft.formData)
+          : serverDraft.formData;
+
         await restoreDraftState(parsed);
         await saveDraftToDB(parsed); // sync offline copy
         return;
@@ -796,7 +812,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let draftTimer;
   function debouncedSaveDraft() {
     if (isSubmitting) return;
-    if (!loggedInMobile) return;
+    if (isRestoring || !loggedInMobile) return;
     if (typeof saveDraft !== "function") return;
 
     clearTimeout(draftTimer);
@@ -810,9 +826,10 @@ document.addEventListener("DOMContentLoaded", () => {
           step: currentStep,
           fields: {
             ...data,
-            pan: realPan || "",
-            aadhaar: realAadhaar || "",
-            bankAccount: realBankAccount || ""
+            // Explicitly prefer real values for masked fields
+            pan: realPan || data.pan || "",
+            aadhaar: realAadhaar || data.aadhaar || "",
+            bankAccount: realBankAccount || data.bankAccount || ""
           },
           educationRows: educationalParams
         })
@@ -884,6 +901,12 @@ document.addEventListener("DOMContentLoaded", () => {
   `;
 
     languageTableBody.appendChild(tr);
+
+    // Bind autosave for new row
+    tr.querySelectorAll("input").forEach(el => {
+      el.addEventListener("input", debouncedSaveDraft);
+      el.addEventListener("change", debouncedSaveDraft);
+    });
   });
 
 
