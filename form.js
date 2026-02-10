@@ -569,6 +569,9 @@ function isSkippable(el) {
   );
 }
 
+let serverDraft = null; 
+
+
 async function fetchServerDraft(mobile) {
   try {
     const res = await fetch(
