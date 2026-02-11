@@ -118,8 +118,6 @@ function collectFormData() {
   return data;
 }
 
-
-
 // Consolidated Restore Function
 async function restoreDraftState(data) {
   if (!data) return;
@@ -643,7 +641,8 @@ function isSkippable(el) {
     el.readOnly ||
     el.offsetParent === null ||
     el.id === "pan" ||
-    el.id === "aadhaar"
+    el.id === "aadhaar" ||
+    el.id === "bankAccount"  
   );
 }
 
@@ -1367,15 +1366,11 @@ document.addEventListener("DOMContentLoaded", () => {
     ageInput.value = age >= 0 ? age : "";
   });
 
-
-
   maritalStatus?.addEventListener("change", toggleMaritalFields);
-  toggleMaritalFields();
-
-
+  // toggleMaritalFields();
 
   prolongedIllness?.addEventListener("change", toggleIllnessFields);
-  toggleIllnessFields();
+  // toggleIllnessFields();
 
   function syncMaskedKYC() {
     if (
@@ -1394,9 +1389,6 @@ document.addEventListener("DOMContentLoaded", () => {
       realAadhaar = aadhaarInput.value;
     }
   }
-
-
-
 
   function validateKYC(silent = false) {
     syncMaskedKYC();
