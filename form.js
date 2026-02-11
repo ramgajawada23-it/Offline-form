@@ -253,33 +253,59 @@ function restoreMaskedKYC(data) {
   const bankHidden = document.getElementById("bankAccount");
   const bankDisplay = document.getElementById("bankAccountDisplay");
 
+  console.log("🔍 Restoring KYC data:", {
+    pan: data.pan,
+    aadhaar: data.aadhaar,
+    bankAccount: data.bankAccount
+  });
+
   // PAN
   if (data.pan && panHidden && panDisplay) {
     realPan = data.pan;
     panHidden.value = data.pan;
-    panDisplay.value =
-      data.pan.slice(0, 2) + "****" + data.pan.slice(6);
+    
+    // Only mask if it's a valid PAN format (10 chars)
+    if (data.pan.length === 10) {
+      panDisplay.value = data.pan.slice(0, 2) + "****" + data.pan.slice(6);
+      console.log("✅ PAN restored and masked");
+    } else {
+      panDisplay.value = data.pan;
+      console.log("⚠️ PAN restored but not masked (invalid length)");
+    }
   }
 
   // Aadhaar
   if (data.aadhaar && aadhaarHidden && aadhaarDisplay) {
     realAadhaar = data.aadhaar;
     aadhaarHidden.value = data.aadhaar;
-    aadhaarDisplay.value =
-      "XXXXXXXX" + data.aadhaar.slice(-4);
+    
+    // Only mask if it's a valid Aadhaar format (12 digits)
+    if (data.aadhaar.length === 12) {
+      aadhaarDisplay.value = "XXXXXXXX" + data.aadhaar.slice(-4);
+      console.log("✅ Aadhaar restored and masked");
+    } else {
+      aadhaarDisplay.value = data.aadhaar;
+      console.log("⚠️ Aadhaar restored but not masked (invalid length)");
+    }
   }
 
-  // Bank
+  // Bank Account
   if (data.bankAccount && bankHidden && bankDisplay) {
     realBankAccount = data.bankAccount;
     bankHidden.value = data.bankAccount;
-    bankDisplay.value =
-      "XXXXXX" + data.bankAccount.slice(-4);
+    
+    // Only mask if it's at least 8 digits
+    if (data.bankAccount.length >= 8) {
+      bankDisplay.value = "XXXXXX" + data.bankAccount.slice(-4);
+      console.log("✅ Bank Account restored and masked");
+    } else {
+      bankDisplay.value = data.bankAccount;
+      console.log("⚠️ Bank Account restored but not masked (invalid length)");
+    }
   }
 }
 
 
-// Redundant localstorage loadDraft removed.
 function recalculateAge() {
   const dob = document.getElementById("dob")?.value;
   const ageEl = document.getElementById("age");
@@ -626,7 +652,6 @@ function allowOnlyYear(input) {
     e.target.value = v;
   });
 }
-
 
 function allowOnlyAlphabets(input) {
   input.addEventListener("input", e => {
@@ -2608,4 +2633,4 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   updateUI();
   updateNextVisualState();
-}); 
+});
