@@ -84,16 +84,18 @@ async function restoreDraftState(data) {
 
   isRestoring = true;
 
-  // 1️⃣ Restore dynamic rows FIRST (DOM creation)
+  // 1️⃣ Restore dynamic family rows first
   if (data.fields) {
     restoreFamilyRows(data.fields);
   }
 
-  // 2️⃣ Delay value restoration until DOM is ready
+  // 2️⃣ Delay full restore until DOM + dynamic rows are ready
   setTimeout(() => {
     try {
       if (data.fields) {
         restoreFormData(data.fields);
+
+        // 🔥 VERY IMPORTANT — restore masked KYC AFTER form fields
         restoreMaskedKYC(data.fields);
       }
 
@@ -101,19 +103,20 @@ async function restoreDraftState(data) {
         restoreEducationRows(data.educationRows);
       }
 
-      // Derived UI logic
       recalculateAge();
       toggleIllnessFields();
       toggleMaritalFields();
       toggleExperienceDependentSections();
+
       validateStep3Languages(true);
 
-      // 3️⃣ Show step ONLY AFTER restore
+      // 3️⃣ Restore step
       if (typeof data.step === "number") {
         showStep(data.step);
       }
+
     } finally {
-      isRestoring = false; // ✅ ONLY HERE
+      isRestoring = false;  // ✅ ONLY reset here
     }
   }, 0);
 }
@@ -183,24 +186,37 @@ function restoreFormData(data) {
 }
 
 function restoreMaskedKYC(data) {
+  const panHidden = document.getElementById("pan");
+  const panDisplay = document.getElementById("panDisplay");
+
+  const aadhaarHidden = document.getElementById("aadhaar");
+  const aadhaarDisplay = document.getElementById("aadhaarDisplay");
+
+  const bankHidden = document.getElementById("bankAccount");
+  const bankDisplay = document.getElementById("bankAccountDisplay");
+
+  // PAN
   if (data.pan && panPattern.test(data.pan)) {
     realPan = data.pan;
-    document.getElementById("pan").value = realPan;
-    document.getElementById("panDisplay").value = data.pan.slice(0, 2) + "****" + data.pan.slice(6);
+    panHidden.value = realPan;
+    panDisplay.value = realPan.slice(0, 2) + "****" + realPan.slice(6);
   }
 
+  // Aadhaar
   if (data.aadhaar && /^\d{12}$/.test(data.aadhaar)) {
     realAadhaar = data.aadhaar;
-    document.getElementById("aadhaar").value = realAadhaar;
-    document.getElementById("aadhaarDisplay").value = "XXXXXXXX" + data.aadhaar.slice(8);
+    aadhaarHidden.value = realAadhaar;
+    aadhaarDisplay.value = "XXXXXXXX" + realAadhaar.slice(8);
   }
 
+  // Bank
   if (data.bankAccount && data.bankAccount.length >= 8) {
     realBankAccount = data.bankAccount;
-    document.getElementById("bankAccount").value = realBankAccount;
-    document.getElementById("bankAccountDisplay").value = "XXXXXX" + realBankAccount.slice(-4);
+    bankHidden.value = realBankAccount;
+    bankDisplay.value = "XXXXXX" + realBankAccount.slice(-4);
   }
 }
+
 
 // Redundant localstorage loadDraft removed.
 
