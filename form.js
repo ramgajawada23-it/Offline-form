@@ -1,5 +1,9 @@
 // form.js
 let isOnline = navigator.onLine;
+let realPan = "";
+let realAadhaar = "";
+let realBankAccount = "";
+let isRestoring = false;
 
 window.debouncedSaveDraft = function () {
   console.warn("debouncedSaveDraft called before initialization");
@@ -57,6 +61,43 @@ async function saveDraft(draft) {
   }
 }
 
+/* ---------- MARITAL STATUS TOGGLE ---------- */
+function toggleMaritalFields() {
+  const show = maritalStatus?.value === "Married";
+
+  if (marriageDate?.parentElement)
+    marriageDate.parentElement.style.display = show ? "block" : "none";
+
+  if (childrenCount?.parentElement)
+    childrenCount.parentElement.style.display = show ? "block" : "none";
+
+  if (!show) {
+    marriageDate.value = "";
+    childrenCount.value = "";
+    clearError(marriageDate);
+    clearError(childrenCount);
+  }
+}
+
+function toggleIllnessFields() {
+  const prolongedIllness = document.getElementById("illness");
+  const illnessName = document.getElementById("illnessName");
+  const illnessDuration = document.getElementById("illnessDuration");
+
+  const show = prolongedIllness?.value === "Yes";
+
+  if (illnessName?.parentElement)
+    illnessName.parentElement.style.display = show ? "block" : "none";
+
+  if (illnessDuration?.parentElement)
+    illnessDuration.parentElement.style.display = show ? "block" : "none";
+
+  if (!show) {
+    if (illnessName) illnessName.value = "";
+    if (illnessDuration) illnessDuration.value = "";
+  }
+}
+
 function isVisible(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 }
@@ -77,6 +118,8 @@ function collectFormData() {
   return data;
 }
 
+
+
 // Consolidated Restore Function
 async function restoreDraftState(data) {
   if (!data) return;
@@ -90,10 +133,6 @@ async function restoreDraftState(data) {
       restoreLanguageRows(data.fields);
     }
 
-    if (Array.isArray(data.educationRows)) {
-      restoreEducationRows(data.educationRows);
-    }
-
     // 2️⃣ Delay actual field population
     setTimeout(() => {
       try {
@@ -101,7 +140,7 @@ async function restoreDraftState(data) {
           restoreFormData(data.fields);
           restoreMaskedKYC(data.fields);
         }
-
+        // 🔁 Recalculate derived / conditional fields
         recalculateAge();
         toggleIllnessFields();
         toggleMaritalFields();
@@ -110,6 +149,9 @@ async function restoreDraftState(data) {
 
         if (typeof data.step === "number") {
           showStep(data.step);
+        }
+        if (Array.isArray(data.educationRows)) {
+          restoreEducationRows(data.educationRows);
         }
 
       } finally {
@@ -176,7 +218,6 @@ function restoreLanguageRows(fields) {
   }
 }
 
-
 function restoreFormData(data) {
   if (!data) return;
 
@@ -202,11 +243,6 @@ function restoreFormData(data) {
     }
   });
 
-  // 🔁 Recalculate derived / conditional fields
-  recalculateAge();
-  toggleIllnessFields();
-  toggleMaritalFields();
-  toggleExperienceDependentSections();
 }
 
 function restoreMaskedKYC(data) {
@@ -214,38 +250,38 @@ function restoreMaskedKYC(data) {
 
   const panHidden = document.getElementById("pan");
   const panDisplay = document.getElementById("panDisplay");
-
   const aadhaarHidden = document.getElementById("aadhaar");
   const aadhaarDisplay = document.getElementById("aadhaarDisplay");
-
   const bankHidden = document.getElementById("bankAccount");
   const bankDisplay = document.getElementById("bankAccountDisplay");
 
   // PAN
   if (data.pan && panHidden && panDisplay) {
     realPan = data.pan;
-    panHidden.value = realPan;
-    panDisplay.value = realPan.slice(0,2) + "****" + realPan.slice(6);
+    panHidden.value = data.pan;
+    panDisplay.value =
+      data.pan.slice(0, 2) + "****" + data.pan.slice(6);
   }
 
   // Aadhaar
   if (data.aadhaar && aadhaarHidden && aadhaarDisplay) {
     realAadhaar = data.aadhaar;
-    aadhaarHidden.value = realAadhaar;
-    aadhaarDisplay.value = "XXXXXXXX" + realAadhaar.slice(-4);
+    aadhaarHidden.value = data.aadhaar;
+    aadhaarDisplay.value =
+      "XXXXXXXX" + data.aadhaar.slice(-4);
   }
 
   // Bank
   if (data.bankAccount && bankHidden && bankDisplay) {
     realBankAccount = data.bankAccount;
-    bankHidden.value = realBankAccount;
-    bankDisplay.value = "XXXXXX" + realBankAccount.slice(-4);
+    bankHidden.value = data.bankAccount;
+    bankDisplay.value =
+      "XXXXXX" + data.bankAccount.slice(-4);
   }
 }
 
 
 // Redundant localstorage loadDraft removed.
-
 function recalculateAge() {
   const dob = document.getElementById("dob")?.value;
   const ageEl = document.getElementById("age");
@@ -260,7 +296,6 @@ function recalculateAge() {
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
     age--;
   }
-
   ageEl.value = age;
 }
 
@@ -321,12 +356,6 @@ const heightPattern = /^[1-8]'([0-9]|1[01])$/;
 const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const aadhaarPlain = /^\d{12}$/;
 
-let realPan = "";
-let realAadhaar = "";
-let realBankAccount = "";
-// let isRestoringDraft = false; // Consolidated to isRestoring
-
-let isRestoring = false;
 
 window.addFamilyRow = () => {
   const tbody = document.getElementById("familyTableBody");
@@ -334,7 +363,6 @@ window.addFamilyRow = () => {
   if (!tbody) return;
 
   const index = tbody.children.length;
-
   const tr = document.createElement("tr");
   tr.innerHTML = `
       <td>${index + 1}</td>
@@ -1339,44 +1367,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ageInput.value = age >= 0 ? age : "";
   });
 
-  /* ---------- MARITAL STATUS TOGGLE ---------- */
-  function toggleMaritalFields() {
-    const show = maritalStatus?.value === "Married";
 
-    if (marriageDate?.parentElement)
-      marriageDate.parentElement.style.display = show ? "block" : "none";
-
-    if (childrenCount?.parentElement)
-      childrenCount.parentElement.style.display = show ? "block" : "none";
-
-    if (!show) {
-      marriageDate.value = "";
-      childrenCount.value = "";
-      clearError(marriageDate);
-      clearError(childrenCount);
-    }
-  }
 
   maritalStatus?.addEventListener("change", toggleMaritalFields);
   toggleMaritalFields();
 
-  /* ---------- PROLONGED ILLNESS TOGGLE ---------- */
-  function toggleIllnessFields() {
-    const show = prolongedIllness?.value === "Yes";
 
-    if (illnessName?.parentElement)
-      illnessName.parentElement.style.display = show ? "block" : "none";
-
-    if (illnessDuration?.parentElement)
-      illnessDuration.parentElement.style.display = show ? "block" : "none";
-
-    if (!show) {
-      illnessName.value = "";
-      illnessDuration.value = "";
-      clearError(illnessName);
-      clearError(illnessDuration);
-    }
-  }
 
   prolongedIllness?.addEventListener("change", toggleIllnessFields);
   toggleIllnessFields();
