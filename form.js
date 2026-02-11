@@ -57,7 +57,6 @@ async function saveDraft(draft) {
   }
 }
 
-
 function isVisible(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 }
@@ -84,43 +83,45 @@ async function restoreDraftState(data) {
 
   isRestoring = true;
 
-  // 1️⃣ Restore dynamic family rows first
-  if (data.fields) {
-    restoreFamilyRows(data.fields);
-  }
-
-  // 2️⃣ Delay full restore until DOM + dynamic rows are ready
-  setTimeout(() => {
-    try {
-      if (data.fields) {
-        restoreFormData(data.fields);
-
-        // 🔥 VERY IMPORTANT — restore masked KYC AFTER form fields
-        restoreMaskedKYC(data.fields);
-      }
-
-      if (data.educationRows) {
-        restoreEducationRows(data.educationRows);
-      }
-
-      recalculateAge();
-      toggleIllnessFields();
-      toggleMaritalFields();
-      toggleExperienceDependentSections();
-
-      validateStep3Languages(true);
-
-      // 3️⃣ Restore step
-      if (typeof data.step === "number") {
-        showStep(data.step);
-      }
-
-    } finally {
-      isRestoring = false;  // ✅ ONLY reset here
+  try {
+    // 1️⃣ Restore dynamic rows FIRST
+    if (data.fields) {
+      restoreFamilyRows(data.fields);
+      restoreLanguageRows(data.fields);
     }
-  }, 0);
-}
 
+    if (Array.isArray(data.educationRows)) {
+      restoreEducationRows(data.educationRows);
+    }
+
+    // 2️⃣ Delay actual field population
+    setTimeout(() => {
+      try {
+        if (data.fields) {
+          restoreFormData(data.fields);
+          restoreMaskedKYC(data.fields);
+        }
+
+        recalculateAge();
+        toggleIllnessFields();
+        toggleMaritalFields();
+        toggleExperienceDependentSections();
+        validateStep3Languages(true);
+
+        if (typeof data.step === "number") {
+          showStep(data.step);
+        }
+
+      } finally {
+        isRestoring = false;
+      }
+    }, 50); // 🔥 use 50ms not 0
+
+  } catch (err) {
+    console.error("Restore failed:", err);
+    isRestoring = false;
+  }
+}
 
 function restoreFamilyRows(fields) {
   const tbody = document.getElementById("familyTableBody");
@@ -152,6 +153,30 @@ function restoreFamilyRows(fields) {
   }, 0);
 }
 
+function restoreLanguageRows(fields) {
+  const tbody = document.querySelector("#languageTable tbody");
+  if (!tbody) return;
+
+  // 🔥 CLEAR FIRST
+  tbody.innerHTML = "";
+
+  let maxIndex = -1;
+
+  Object.keys(fields).forEach(key => {
+    const match = key.match(/^languages\[(\d+)\]/);
+    if (match) {
+      maxIndex = Math.max(maxIndex, parseInt(match[1]));
+    }
+  });
+
+  if (maxIndex < 0) return;
+
+  for (let i = 0; i <= maxIndex; i++) {
+    document.getElementById("addLanguageBtn")?.click();
+  }
+}
+
+
 function restoreFormData(data) {
   if (!data) return;
 
@@ -182,10 +207,11 @@ function restoreFormData(data) {
   toggleIllnessFields();
   toggleMaritalFields();
   toggleExperienceDependentSections();
-  
 }
 
-function restoreMaskedKYC(data) {
+ffunction restoreMaskedKYC(data) {
+  if (!data) return;
+
   const panHidden = document.getElementById("pan");
   const panDisplay = document.getElementById("panDisplay");
 
@@ -196,21 +222,21 @@ function restoreMaskedKYC(data) {
   const bankDisplay = document.getElementById("bankAccountDisplay");
 
   // PAN
-  if (data.pan && panPattern.test(data.pan)) {
+  if (data.pan && panHidden && panDisplay) {
     realPan = data.pan;
     panHidden.value = realPan;
-    panDisplay.value = realPan.slice(0, 2) + "****" + realPan.slice(6);
+    panDisplay.value = realPan.slice(0,2) + "****" + realPan.slice(6);
   }
 
   // Aadhaar
-  if (data.aadhaar && /^\d{12}$/.test(data.aadhaar)) {
+  if (data.aadhaar && aadhaarHidden && aadhaarDisplay) {
     realAadhaar = data.aadhaar;
     aadhaarHidden.value = realAadhaar;
-    aadhaarDisplay.value = "XXXXXXXX" + realAadhaar.slice(8);
+    aadhaarDisplay.value = "XXXXXXXX" + realAadhaar.slice(-4);
   }
 
   // Bank
-  if (data.bankAccount && data.bankAccount.length >= 8) {
+  if (data.bankAccount && bankHidden && bankDisplay) {
     realBankAccount = data.bankAccount;
     bankHidden.value = realBankAccount;
     bankDisplay.value = "XXXXXX" + realBankAccount.slice(-4);
@@ -219,7 +245,6 @@ function restoreMaskedKYC(data) {
 
 
 // Redundant localstorage loadDraft removed.
-
 
 function recalculateAge() {
   const dob = document.getElementById("dob")?.value;
@@ -275,7 +300,6 @@ async function syncOfflineSubmissions() {
   await clearOfflineData();
   console.log("All offline submissions synced");
 }
-
 
 const isFutureDate = d => d && new Date(d) > new Date();
 const minLen = (v, l) => v && v.trim().length >= l;
@@ -344,7 +368,6 @@ window.addFamilyRow = () => {
     syncFamilyRow(tr);
     updateFamilyRelationshipOptions(); // ✅ ADD THIS
   });
-
   bindFamilyRowAutosave(tr);
 };
 
@@ -375,7 +398,6 @@ function syncFamilyRow(row) {
     nameInput.value = motherName || "";
     nameInput.readOnly = true;
   }
-
   dobInputRow.readOnly = false;
 }
 
@@ -389,7 +411,6 @@ function updateFamilyRelationshipOptions() {
   rows.forEach(row => {
     const rel = row.querySelector("select[name*='relationship']");
     if (!rel) return;
-
     if (rel.value === "Father") fatherUsed = true;
     if (rel.value === "Mother") motherUsed = true;
   });
@@ -649,7 +670,6 @@ document.addEventListener("DOMContentLoaded", () => {
           : serverDraft.formData;
 
         await restoreDraftState(parsed);
-        await saveDraftToDB(parsed); // sync offline copy
         return;
       }
 
@@ -727,17 +747,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.restoreEducationRows = function (saved = []) {
     const tbody = document.getElementById("educationTableBody");
-    tbody.innerHTML = "";
+    if (!tbody) return;
 
-    if (!saved || saved.length === 0) {
-      addEducationRow(null, false); // default row
+    tbody.innerHTML = ""; // always clear
+
+    if (!Array.isArray(saved) || saved.length === 0) {
+      addEducationRow(null, false);
       return;
     }
 
     saved.forEach((row, index) => {
       addEducationRow(row, index !== 0);
     });
-  }
+
+    // 🔥 IMPORTANT: trigger autosave binding
+    setTimeout(() => {
+      document
+        .querySelectorAll("#educationTableBody input")
+        .forEach(el => {
+          el.addEventListener("input", window.debouncedSaveDraft);
+          el.addEventListener("change", window.debouncedSaveDraft);
+        });
+    }, 0);
+  };
 
   function setupEducationTable() {
     const addBtn = document.getElementById("addEducationBtn");
@@ -1583,9 +1615,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    const acc = document.getElementById("bankAccount");
-    if (!isDigits(acc.value) || acc.value.length < 8 || acc.value.length > 18) {
-      showError(acc, "Account number must be 8–18 digits", silent);
+    if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
+      showError(bankAccInput, "Account number must be 8–18 digits", silent);
       ok = false;
     }
 
@@ -1754,8 +1785,7 @@ document.addEventListener("DOMContentLoaded", () => {
         focusFirstError(step);
       }
     }
-
-    return ok
+    return ok;
   }
 
   /* =========================================================
