@@ -209,7 +209,7 @@ function restoreFormData(data) {
   toggleExperienceDependentSections();
 }
 
-ffunction restoreMaskedKYC(data) {
+function restoreMaskedKYC(data) {
   if (!data) return;
 
   const panHidden = document.getElementById("pan");
