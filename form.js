@@ -449,6 +449,13 @@ function syncFamilyRow(row) {
   } else if (rel.value === "Mother") {
     nameInput.value = motherName || "";
     nameInput.readOnly = true;
+  } else {
+    if (
+      (fatherName && nameInput.value === fatherName) ||
+      (motherName && nameInput.value === motherName)
+    ) {
+      nameInput.value = "";
+    }
   }
   dobInputRow.readOnly = false;
 }
@@ -1009,8 +1016,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-
-
   // Global validateStep3Languages function with silent parameter support
   function validateStep3Languages(silent = false) {
     const checked = document.querySelectorAll(
@@ -1050,8 +1055,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return true;
   }
-
-
 
   function toggleExperienceDependentSections() {
     const years = Number(document.getElementById("expYears")?.value || 0);
@@ -1629,15 +1632,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
-      showError(bankAccInput, "Account number must be 8–18 digits", silent);
+      showError(bankAccInput, "Required Account number(8-18 digits)", silent);
       ok = false;
     }
 
-    const uan = document.getElementById("uan");
-    if (uan && !/^\d{12}$/.test(uan.value)) {
-      showError(uan, "UAN must be exactly 12 digits", silent);
-      ok = false;
-    }
+
 
     // ----- Bank Name -----
     const bankName = step.querySelector("#bankName");
@@ -2024,6 +2023,37 @@ document.addEventListener("DOMContentLoaded", () => {
     return ok;
   }
 
+  function toggleExperienceDependentSections() {
+    const years = Number(document.getElementById("expYears")?.value || 0);
+    const months = Number(document.getElementById("expMonths")?.value || 0);
+    const hasExperience = years > 0 || months > 0;
+
+    // Toggle UAN
+    const uanContainer = document.getElementById("uanContainer");
+    if (uanContainer) {
+      uanContainer.style.display = hasExperience ? "block" : "none";
+      if (!hasExperience) {
+        const uanInput = document.getElementById("uan");
+        if (uanInput) {
+          uanInput.value = "";
+          clearError(uanInput);
+        }
+      }
+    }
+    
+    // Toggle Employment History & Assignments
+    const empHistory = document.getElementById("employmentHistory");
+    const assignments = document.getElementById("assignmentsHandled");
+    
+    if (empHistory) empHistory.style.display = hasExperience ? "block" : "none";
+    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
+  }
+
+  // Bind events
+  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
+  document.getElementById("expMonths")?.addEventListener("input", toggleExperienceDependentSections);
+  // Call once on load/init logic (handled in restoreDraftState or similar, but good to ensure)
+
   /* =========================================================
     STEP 4 – EXPERIENCE
   ========================================================= */
@@ -2049,6 +2079,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (monthsEl.value.trim() === "" || months < 0 || months > 11) {
       showError(monthsEl, "Experience months is required (0–11)", silent);
       ok = false;
+    }
+
+    const hasExperience = years > 0 || months > 0;
+    
+    /* ================= UAN (REQUIRED IF EXPERIENCED) ================= */
+    const uan = document.getElementById("uan");
+    if (hasExperience && uan) {
+      if (!/^\d{12}$/.test(uan.value)) {
+         showError(uan, "UAN must be exactly 12 digits", silent);
+         ok = false;
+      }
     }
 
     /* ================= EMPLOYMENT HISTORY (REQUIRED) ================= */
