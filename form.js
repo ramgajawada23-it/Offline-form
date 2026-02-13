@@ -263,7 +263,7 @@ function restoreMaskedKYC(data) {
   if (data.pan && panHidden && panDisplay) {
     realPan = data.pan;
     panHidden.value = data.pan;
-    
+
     // Only mask if it's a valid PAN format (10 chars)
     if (data.pan.length === 10) {
       panDisplay.value = data.pan.slice(0, 2) + "****" + data.pan.slice(6);
@@ -278,7 +278,7 @@ function restoreMaskedKYC(data) {
   if (data.aadhaar && aadhaarHidden && aadhaarDisplay) {
     realAadhaar = data.aadhaar;
     aadhaarHidden.value = data.aadhaar;
-    
+
     // Only mask if it's a valid Aadhaar format (12 digits)
     if (data.aadhaar.length === 12) {
       aadhaarDisplay.value = "XXXXXXXX" + data.aadhaar.slice(-4);
@@ -293,7 +293,7 @@ function restoreMaskedKYC(data) {
   if (data.bankAccount && bankHidden && bankDisplay) {
     realBankAccount = data.bankAccount;
     bankHidden.value = data.bankAccount;
-    
+
     // Only mask if it's at least 8 digits
     if (data.bankAccount.length >= 8) {
       bankDisplay.value = "XXXXXX" + data.bankAccount.slice(-4);
@@ -449,6 +449,13 @@ function syncFamilyRow(row) {
   } else if (rel.value === "Mother") {
     nameInput.value = motherName || "";
     nameInput.readOnly = true;
+  } else {
+    if (
+      (fatherName && nameInput.value === fatherName) ||
+      (motherName && nameInput.value === motherName)
+    ) {
+      nameInput.value = "";
+    }
   }
   dobInputRow.readOnly = false;
 }
@@ -667,7 +674,7 @@ function isSkippable(el) {
     el.offsetParent === null ||
     el.id === "pan" ||
     el.id === "aadhaar" ||
-    el.id === "bankAccount"  
+    el.id === "bankAccount"
   );
 }
 
@@ -1009,8 +1016,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-
-
   // Global validateStep3Languages function with silent parameter support
   function validateStep3Languages(silent = false) {
     const checked = document.querySelectorAll(
@@ -1051,23 +1056,37 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
-
-
   function toggleExperienceDependentSections() {
     const years = Number(document.getElementById("expYears")?.value || 0);
     const months = Number(document.getElementById("expMonths")?.value || 0);
-
     const hasExperience = years > 0 || months > 0;
 
-    const employment = document.getElementById("employmentHistory");
-    const assignments = document.getElementById("assignmentsHandled");
-    const salary = document.getElementById("salarySection");
-    const reference = document.getElementById("referenceSection");
+    // UAN
+    const uanContainer = document.getElementById("uanContainer");
+    if (uanContainer) {
+      uanContainer.style.display = hasExperience ? "block" : "none";
 
-    if (employment) employment.style.display = hasExperience ? "block" : "none";
-    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
-    if (salary) salary.style.display = hasExperience ? "block" : "none";
-    if (reference) reference.style.display = hasExperience ? "block" : "none";
+      if (!hasExperience) {
+        const uanInput = document.getElementById("uan");
+        if (uanInput) {
+          uanInput.value = "";
+          clearError(uanInput);
+        }
+      }
+    }
+
+    // Sections dependent on experience
+    const sections = [
+      "employmentHistory",
+      "assignmentsHandled",
+      "salarySection",
+      "referenceSection"
+    ];
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = hasExperience ? "block" : "none";
+    });
   }
 
   // YEARS
@@ -1629,15 +1648,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
-      showError(bankAccInput, "Account number must be 8–18 digits", silent);
+      showError(bankAccInput, "Required Account number(8-18 digits)", silent);
       ok = false;
     }
 
-    const uan = document.getElementById("uan");
-    if (uan && !/^\d{12}$/.test(uan.value)) {
-      showError(uan, "UAN must be exactly 12 digits", silent);
-      ok = false;
-    }
+
 
     // ----- Bank Name -----
     const bankName = step.querySelector("#bankName");
@@ -2027,6 +2042,15 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================================================
     STEP 4 – EXPERIENCE
   ========================================================= */
+
+  // Bind events
+  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
+  document.getElementById("expMonths")?.addEventListener("input", toggleExperienceDependentSections);
+  // Call once on load/init logic (handled in restoreDraftState or similar, but good to ensure)
+
+  /* =========================================================
+    STEP 4 – EXPERIENCE
+  ========================================================= */
   function validateStep4(silent = false) {
     const step = steps[3];
     if (!silent) clearStepErrors(step);
@@ -2051,30 +2075,44 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    /* ================= EMPLOYMENT HISTORY (REQUIRED) ================= */
-    step
-      .querySelectorAll("#employmentHistory input, #employmentHistory textarea")
-      .forEach(el => {
-        if (isSkippable(el)) return;
+    const hasExperience = years > 0 || months > 0;
 
-        if (!el.value.trim()) {
-          showError(el, "This field is required", silent);
-          ok = false;
-        }
-      });
+    /* ================= UAN (REQUIRED IF EXPERIENCED) ================= */
+    const uan = document.getElementById("uan");
+    if (hasExperience && uan) {
+      if (!/^\d{12}$/.test(uan.value)) {
+        showError(uan, "UAN must be exactly 12 digits", silent);
+        ok = false;
+      }
+    }
 
-    /* ================= ASSIGNMENTS HANDLED (REQUIRED) ================= */
-    step
-      .querySelectorAll("#assignmentsHandled input, #assignmentsHandled textarea")
-      .forEach(el => {
-        if (isSkippable(el)) return;
+    if (hasExperience) {
 
-        if (!el.value.trim()) {
-          showError(el, "This field is required", silent);
-          ok = false;
-        }
-      });
+      /* ================= EMPLOYMENT HISTORY ================= */
+      step
+        .querySelectorAll("#employmentHistory input, #employmentHistory textarea")
+        .forEach(el => {
+          if (isSkippable(el)) return;
 
+          if (!el.value.trim()) {
+            showError(el, "This field is required", silent);
+            ok = false;
+          }
+        });
+
+      /* ================= ASSIGNMENTS HANDLED ================= */
+      step
+        .querySelectorAll("#assignmentsHandled input, #assignmentsHandled textarea")
+        .forEach(el => {
+          if (isSkippable(el)) return;
+
+          if (!el.value.trim()) {
+            showError(el, "This field is required", silent);
+            ok = false;
+          }
+        });
+
+    }
     if (!ok && !silent) {
       showSummaryError(
         step,

@@ -104,8 +104,8 @@
             <div class="form-field">
               <select id="state" name="state">
                 <option value="">Select State</option>
-                <option value="A">Telangana</option>
-                <option value="B">Kerala</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Kerala">Kerala</option>
               </select>
             </div>
 
@@ -203,7 +203,7 @@
               </select>
             </div>
             <div class="form-field">
-              <select id="illness" 	name="illness">
+              <select id="illness" name="illness">
                 <option value="">select illness</option>
                 <option>No Prolonged Illness</option>
                 <option>Yes</option>
@@ -230,7 +230,7 @@
               <!-- Real value stored here -->
               <input type="hidden" id="pan" name="pan">
               <!-- Masked UI input -->
-              <input type="text" id="panDisplay" placeholder="PAN Number" >
+              <input type="text" id="panDisplay" placeholder="PAN Number">
             </div>
 
             <div class="form-field">
@@ -239,7 +239,7 @@
             </div>
 
             <div class="form-field">
-              <input type="text" id="uan" placeholder="UAN Number" 	name="uan"> 
+              <input type="text" id="uan" placeholder="UAN Number" name="uan">
             </div>
           </div>
 
@@ -708,9 +708,12 @@
 
           <div class="grid-3" id="loanFields" style="display:none;">
             <div class="form-field"><input id="loanPurpose" placeholder="Purpose of Loan" name="loanPurpose"></div>
-            <div class="form-field"><input id="loanAmount" type="number" placeholder="Loan Amount" name="loanAmount"></div>
-            <div class="form-field"><input id="loanBalance" type="number" placeholder="Balance Amount" name="loanBalance"></div>
-            <div class="form-field"><input id="loanSalary" type="number" placeholder="Expected Salary" name="loanSalary"></div>
+            <div class="form-field"><input id="loanAmount" type="number" placeholder="Loan Amount" name="loanAmount">
+            </div>
+            <div class="form-field"><input id="loanBalance" type="number" placeholder="Balance Amount"
+                name="loanBalance"></div>
+            <div class="form-field"><input id="loanSalary" type="number" placeholder="Expected Salary"
+                name="loanSalary"></div>
           </div>
 
           <div id="referenceSection">
@@ -834,23 +837,23 @@
               <br />
 
               <!-- Mediclaim Choice -->
-             <div class="enroll-question">
-  <span class="question-text">
-    Are you interested to enrol in Company Mediclaim policy?
-  </span>
+              <div class="enroll-question">
+                <span class="question-text">
+                  Are you interested to enrol in Company Mediclaim policy?
+                </span>
 
-  <div class="radio-group">
-    <label>
-      <input type="radio" name="mediclaim" id="mediclaimYes" value="Yes">
-      Yes
-    </label>
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" name="mediclaim" id="mediclaimYes" value="Yes">
+                    Yes
+                  </label>
 
-    <label>
-      <input type="radio" name="mediclaim" id="mediclaimNo" value="No">
-      No
-    </label>
-  </div>
-</div>
+                  <label>
+                    <input type="radio" name="mediclaim" id="mediclaimNo" value="No">
+                    No
+                  </label>
+                </div>
+              </div>
 
               <hr>
 
@@ -909,17 +912,17 @@
                     </table>
                   </div>
 
-                 <div class="signature-row right">
-  <div class="signature-block">
-    <img src="signature.png" class="signature-img" alt="Signature">
-    <span class="label">Signature of the Employee</span>
-  </div>
+                  <div class="signature-row right">
+                    <div class="signature-block">
+                      <img src="signature.png" class="signature-img" alt="Signature">
+                      <span class="label">Signature of the Employee</span>
+                    </div>
 
-  <div class="date-block">
-    <span class="label">Date</span>
-    <div class="line short" data-bind="today"></div>
-  </div>
-</div>
+                    <div class="date-block">
+                      <span class="label">Date</span>
+                      <div class="line short" data-bind="today"></div>
+                    </div>
+                  </div>
 
                 </section>
 
@@ -975,6 +978,11 @@
       </form>
     </div> <!-- container -->
   </div> <!-- layout -->
+
+  <!-- <div id="thankYouScreen" style="display:none; text-align:center; padding:60px;">
+    <h2>Thank You!</h2>
+    <p>Your application has been submitted successfully.</p>
+  </div> -->
 
   <script src="offline-db.js"></script>
   <script src="form.js"></script>
