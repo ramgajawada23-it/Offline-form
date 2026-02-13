@@ -699,6 +699,26 @@ async function loadDraft(mobile) {
   }
 }
 
+function clearError(el) {
+  if (!el) return;
+  el.classList.remove("error");
+  const next = el.nextElementSibling;
+  if (next && next.classList.contains("error-text")) next.remove();
+}
+
+function showError(el, msg, silent = false) {
+  if (silent || !el) return;
+
+  clearError(el); // ✅ prevents stacking
+
+  el.classList.add("error");
+
+  const s = document.createElement("small");
+  s.className = "error-text";
+  s.innerText = msg;
+  el.after(s);
+}
+
 /* =========================================================
   MAIN
 ========================================================= */
@@ -803,23 +823,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   // Old saveEducationRows (localStorage) removed
 
-
   window.restoreEducationRows = function (saved = []) {
     const tbody = document.getElementById("educationTableBody");
     if (!tbody) return;
 
-    tbody.innerHTML = ""; // always clear
+    tbody.innerHTML = "";
 
     if (!Array.isArray(saved) || saved.length === 0) {
-      addEducationRow(null, false);
+      setupEducationTable();
       return;
     }
 
     saved.forEach((row, index) => {
-      addEducationRow(row, index !== 0);
+      // First 3 rows = fixed
+      if (index < 3) {
+        addEducationRow(row, false);
+      } else {
+        addEducationRow(row, true);
+      }
     });
 
-    // 🔥 IMPORTANT: trigger autosave binding
     setTimeout(() => {
       document
         .querySelectorAll("#educationTableBody input")
@@ -830,12 +853,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 0);
   };
 
-  function setupEducationTable() {
-    const addBtn = document.getElementById("addEducationBtn");
-    if (!addBtn) return;
 
-    addBtn.addEventListener("click", () => {
-      addEducationRow(null, true);
+  function setupEducationTable() {
+    const tbody = document.getElementById("educationTableBody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    // ===== ROW 1 – GRADUATION =====
+    addEducationRow({
+      degree: "Graduation"
+    }, false);
+
+    // ===== ROW 2 – INTERMEDIATE / DIPLOMA =====
+    addEducationRow({
+      degree: "Intermediate / Diploma"
+    }, false);
+
+    // ===== ROW 3 – SCHOOLING =====
+    addEducationRow({
+      degree: "Schooling"
+    }, false);
+
+    const addBtn = document.getElementById("addEducationBtn");
+    addBtn?.addEventListener("click", () => {
+      addEducationRow(null, true); // extra row with delete
       debouncedSaveDraft();
     });
   }
@@ -946,10 +988,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   window.debouncedSaveDraft = debouncedSaveDraft;
 
+ 
 
-  document.getElementById("bankAccount")?.addEventListener("input", e => {
-    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 18);
-  });
 
   function syncAllFamilyRows() {
     document.querySelectorAll("#familyTableBody tr").forEach(syncFamilyRow);
@@ -1103,7 +1143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.value = v;
     toggleExperienceDependentSections();
   });
-  toggleExperienceDependentSections();
+  // toggleExperienceDependentSections();
 
   ["input", "change"].forEach(evt => {
     document
@@ -1155,25 +1195,6 @@ document.addEventListener("DOMContentLoaded", () => {
     step?.querySelector(".step-error")?.remove();
   }
 
-  function clearError(el) {
-    if (!el) return;
-    el.classList.remove("error");
-    const next = el.nextElementSibling;
-    if (next && next.classList.contains("error-text")) next.remove();
-  }
-
-  function showError(el, msg, silent = false) {
-    if (silent || !el) return;
-
-    clearError(el); // ✅ prevents stacking
-
-    el.classList.add("error");
-
-    const s = document.createElement("small");
-    s.className = "error-text";
-    s.innerText = msg;
-    el.after(s);
-  }
 
   function showStepError(step, msg, silent = false) {
     if (silent) return;
@@ -1335,40 +1356,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-    BANK ACCOUNT (MASKED)
-  ========================================================= */
+  BANK ACCOUNT (FIXED MASKING LOGIC)
+========================================================= */
+
   const bankAccInput = document.getElementById("bankAccountDisplay");
   const bankAccHidden = document.getElementById("bankAccount");
 
+  // While typing → allow up to 18 digits, no masking
   bankAccInput?.addEventListener("input", e => {
-    if (isRestoring) return; // ✅ Fixed flag name
+    if (isRestoring) return;
 
     let v = e.target.value.replace(/\D/g, "");
     if (v.length > 18) v = v.slice(0, 18);
 
-    if (v.length >= 8) {
-      realBankAccount = v;
-      bankAccHidden.value = v;
+    realBankAccount = v;
+    bankAccHidden.value = v;
 
-      const masked = "XXXXXX" + v.slice(-4);
-      e.target.value = masked;
-    } else {
-      realBankAccount = "";
-      bankAccHidden.value = "";
-      e.target.value = v;
-    }
+    e.target.value = v; // DO NOT MASK HERE
   });
 
+  // On focus → show real number
   bankAccInput?.addEventListener("focus", () => {
-    if (realBankAccount) bankAccInput.value = realBankAccount;
-  });
-
-  bankAccInput?.addEventListener("blur", () => {
-    if (realBankAccount && realBankAccount.length >= 8) {
-      bankAccInput.value = "XXXXXX" + realBankAccount.slice(-4);
+    if (realBankAccount) {
+      bankAccInput.value = realBankAccount;
     }
   });
 
+  // On blur → mask if valid length
+  bankAccInput?.addEventListener("blur", () => {
+    if (realBankAccount.length >= 8) {
+      bankAccInput.value =
+        "X".repeat(realBankAccount.length - 4) +
+        realBankAccount.slice(-4);
+    }
+  });
 
 
   /* =========================================================
@@ -1581,7 +1602,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!genderChecked) {
       clearError(genderGroup);
-      showError(genderGroup, " ", silent);
+      showError(genderGroup, "Required", silent);
+
       ok = false;
     }
     // ----- Place of Birth  -----
@@ -1647,10 +1669,12 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
-      showError(bankAccInput, "Required Account number(8-18 digits)", silent);
-      ok = false;
-    }
+const bankValue = realBankAccount || bankAccHidden.value;
+
+if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
+  showError(bankAccInput, "Required Account number (8-18 digits)", silent);
+  ok = false;
+}
 
 
 
@@ -1848,68 +1872,56 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    rows.forEach(row => {
-      const college = row.querySelector("input[name='collegeName']");
-      const board = row.querySelector("input[name='board']");
-      const degree = row.querySelector("input[name='degree']");
-      const stream = row.querySelector("input[name='stream']");
-      const joinYear = row.querySelector("input[name='joiningYear']");
-      const leaveYear = row.querySelector("input[name='leavingYear']");
+    let graduationLeavingYear = 0;
+    rows.forEach((row, index) => {
+      const college = row.querySelector("[name='collegeName']");
+      const board = row.querySelector("[name='board']");
+      const degree = row.querySelector("[name='degree']");
+      const stream = row.querySelector("[name='stream']");
+      const joinYear = row.querySelector("[name='joiningYear']");
+      const leaveYear = row.querySelector("[name='leavingYear']");
+      const percent = row.querySelector("[name='percentage']");
 
-      const percent = row.querySelector("input[name='percentage']");
+      if (!college.value) { showError(college, "Required", silent); ok = false; }
+      if (!board.value) { showError(board, "Required", silent); ok = false; }
+      if (!degree.value) { showError(degree, "Required", silent); ok = false; }
+      if (!stream.value && index === 0) { showError(stream, "Required", silent); ok = false; }
 
-      // allowOnlyYear(joinYear);
-      // allowOnlyYear(leaveYear);
+      if (!isYear(joinYear.value)) { showError(joinYear, "Invalid year", silent); ok = false; }
+      if (!isYear(leaveYear.value)) { showError(leaveYear, "Invalid year", silent); ok = false; }
 
-      /* ---------- Alphabet‑only fields ---------- */
-      if (!college.value || !isAlphaOnly(college.value)) {
-        showError(college, "required", silent);
-        ok = false;
+      if (isYear(joinYear.value) && isYear(leaveYear.value)) {
+
+        if (+leaveYear.value <= +joinYear.value) {
+          showError(leaveYear, "Leaving year must be after joining year", silent);
+          ok = false;
+        }
+
+        if (index === 0) {
+          if (+leaveYear.value - +joinYear.value > 6) {
+            showError(leaveYear, "Graduation duration cannot exceed 6 years", silent);
+            ok = false;
+          }
+          graduationLeavingYear = +leaveYear.value;
+        }
+
+        if (index === 1 || index === 2) {
+          if (+leaveYear.value > graduationLeavingYear) {
+            showError(leaveYear, "Must be completed before Graduation", silent);
+            ok = false;
+          }
+        }
+
+        if (index >= 3) {
+          if (+joinYear.value <= graduationLeavingYear) {
+            showError(joinYear, "Must be after Graduation", silent);
+            ok = false;
+          }
+        }
       }
 
-      if (!board.value || !isAlphaOnly(board.value)) {
-        showError(board, "required", silent);
-        ok = false;
-      }
-
-      if (!degree.value || !isAlphaOnly(degree.value)) {
-        showError(degree, "required", silent);
-        ok = false;
-      }
-
-      if (!stream.value || !isAlphaOnly(stream.value)) {
-        showError(stream, "required", silent);
-        ok = false;
-      }
-
-
-      /* ---------- Year validation ---------- */
-      if (!isYear(joinYear.value)) {
-        showError(joinYear, "Enter valid 4-digit joining year", silent);
-        ok = false;
-      }
-
-      if (!isYear(leaveYear.value)) {
-        showError(leaveYear, "Enter valid 4-digit leaving year", silent);
-        ok = false;
-      }
-
-      if (
-        isYear(joinYear.value) &&
-        isYear(leaveYear.value) &&
-        +leaveYear.value <= +joinYear.value
-      ) {
-        showError(
-          leaveYear,
-          "Leaving year must be after joining year",
-          silent
-        );
-        ok = false;
-      }
-
-      /* ---------- Percentage ---------- */
       if (!percent.value || percent.value < 0 || percent.value > 100) {
-        showError(percent, "must be between 0 and 100", silent);
+        showError(percent, "0–100 only", silent);
         ok = false;
       }
     });
@@ -2039,14 +2051,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return ok;
   }
 
-  /* =========================================================
-    STEP 4 – EXPERIENCE
-  ========================================================= */
-
-  // Bind events
-  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
-  document.getElementById("expMonths")?.addEventListener("input", toggleExperienceDependentSections);
-  // Call once on load/init logic (handled in restoreDraftState or similar, but good to ensure)
 
   /* =========================================================
     STEP 4 – EXPERIENCE
