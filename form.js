@@ -2023,6 +2023,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return ok;
   }
 
+  /* =========================================================
+    STEP 4 – EXPERIENCE
+  ========================================================= */
   function toggleExperienceDependentSections() {
     const years = Number(document.getElementById("expYears")?.value || 0);
     const months = Number(document.getElementById("expMonths")?.value || 0);
@@ -2092,30 +2095,33 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    /* ================= EMPLOYMENT HISTORY (REQUIRED) ================= */
-    step
-      .querySelectorAll("#employmentHistory input, #employmentHistory textarea")
-      .forEach(el => {
-        if (isSkippable(el)) return;
+if (hasExperience) {
 
-        if (!el.value.trim()) {
-          showError(el, "This field is required", silent);
-          ok = false;
-        }
-      });
+  /* ================= EMPLOYMENT HISTORY ================= */
+  step
+    .querySelectorAll("#employmentHistory input, #employmentHistory textarea")
+    .forEach(el => {
+      if (isSkippable(el)) return;
 
-    /* ================= ASSIGNMENTS HANDLED (REQUIRED) ================= */
-    step
-      .querySelectorAll("#assignmentsHandled input, #assignmentsHandled textarea")
-      .forEach(el => {
-        if (isSkippable(el)) return;
+      if (!el.value.trim()) {
+        showError(el, "This field is required", silent);
+        ok = false;
+      }
+    });
 
-        if (!el.value.trim()) {
-          showError(el, "This field is required", silent);
-          ok = false;
-        }
-      });
+  /* ================= ASSIGNMENTS HANDLED ================= */
+  step
+    .querySelectorAll("#assignmentsHandled input, #assignmentsHandled textarea")
+    .forEach(el => {
+      if (isSkippable(el)) return;
 
+      if (!el.value.trim()) {
+        showError(el, "This field is required", silent);
+        ok = false;
+      }
+    });
+
+}
     if (!ok && !silent) {
       showSummaryError(
         step,
