@@ -79,6 +79,7 @@ function toggleMaritalFields() {
   }
 }
 
+
 function toggleIllnessFields() {
   const prolongedIllness = document.getElementById("illness");
   const illnessName = document.getElementById("illnessName");
@@ -894,6 +895,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  ["loanAmount", "loanBalance", "loanSalary"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.addEventListener("input", function () {
+      this.value = this.value.replace(/\D/g, "").slice(0, 8);
+    });
+  });
+
 
   function stopAutosave() {
     // No-op: Interval removed in favor of event-based saving
@@ -988,7 +998,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   window.debouncedSaveDraft = debouncedSaveDraft;
 
- 
+
 
 
   function syncAllFamilyRows() {
@@ -1054,6 +1064,7 @@ document.addEventListener("DOMContentLoaded", () => {
       el.addEventListener("input", debouncedSaveDraft);
       el.addEventListener("change", debouncedSaveDraft);
     });
+
   });
 
   // Global validateStep3Languages function with silent parameter support
@@ -1096,43 +1107,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
-  function toggleExperienceDependentSections() {
-    const years = Number(document.getElementById("expYears")?.value || 0);
-    const months = Number(document.getElementById("expMonths")?.value || 0);
-    const hasExperience = years > 0 || months > 0;
-
-    // UAN
-    const uanContainer = document.getElementById("uanContainer");
-    if (uanContainer) {
-      uanContainer.style.display = hasExperience ? "block" : "none";
-
-      if (!hasExperience) {
-        const uanInput = document.getElementById("uan");
-        if (uanInput) {
-          uanInput.value = "";
-          clearError(uanInput);
-        }
-      }
-    }
-
-    // Sections dependent on experience
-    const sections = [
-      "employmentHistory",
-      "assignmentsHandled",
-      "salarySection",
-      "referenceSection"
-    ];
-
-    sections.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = hasExperience ? "block" : "none";
-    });
-  }
-
   // YEARS
-  document
-    .getElementById("expYears")
-    ?.addEventListener("input", toggleExperienceDependentSections);
+  // document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
 
   // MONTHS
   const monthsEl = document.getElementById("expMonths");
@@ -1186,6 +1162,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountInput = document.getElementById("bankAccount");
   if (accountInput) {
     allowOnlyDigits(accountInput, 18);
+  }
+
+  const interviewDropdown = document.getElementById("interviewedBefore");
+  const interviewDetails = document.getElementById("interviewDetails");
+
+  if (interviewDropdown && interviewDetails) {
+
+    interviewDropdown.addEventListener("change", function () {
+
+      if (this.value === "yes") {
+        interviewDetails.style.display = "block";
+      } else {
+        interviewDetails.style.display = "none";
+
+        // Optional: clear values when hidden
+        interviewDetails.querySelectorAll("input").forEach(input => {
+          input.value = "";
+        });
+      }
+
+    });
+    interviewDropdown.dispatchEvent(new Event("change"));
   }
 
   /* ================= ERROR HELPERS ================= */
@@ -1356,13 +1354,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-  BANK ACCOUNT (FIXED MASKING LOGIC)
-========================================================= */
+   BANK ACCOUNT (FIXED MASKING LOGIC)
+ ========================================================= */
 
   const bankAccInput = document.getElementById("bankAccountDisplay");
   const bankAccHidden = document.getElementById("bankAccount");
 
-  // While typing → allow up to 18 digits, no masking
+  // While typing → allow up to 18 digits, show real value
   bankAccInput?.addEventListener("input", e => {
     if (isRestoring) return;
 
@@ -1372,7 +1370,8 @@ document.addEventListener("DOMContentLoaded", () => {
     realBankAccount = v;
     bankAccHidden.value = v;
 
-    e.target.value = v; // DO NOT MASK HERE
+    // Show real value while typing (NOT masked)
+    e.target.value = v;
   });
 
   // On focus → show real number
@@ -1382,15 +1381,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // On blur → mask if valid length
+  // On blur → mask if valid length (8-18 digits)
   bankAccInput?.addEventListener("blur", () => {
     if (realBankAccount.length >= 8) {
-      bankAccInput.value =
-        "X".repeat(realBankAccount.length - 4) +
-        realBankAccount.slice(-4);
+      bankAccInput.value = "XXXXXX" + realBankAccount.slice(-4);
     }
   });
-
 
   /* =========================================================
     STEP 1 – PERSONAL
@@ -1491,8 +1487,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fn = step.querySelector("#firstName");
     const ln = step.querySelector("#lastName");
-    const pan = step.querySelector("#pan");
-    const aadhaar = step.querySelector("#aadhaar");
+    // const pan = step.querySelector("#pan");
+    // const aadhaar = step.querySelector("#aadhaar");
     const dob = step.querySelector("#dob");
     const age = step.querySelector("#age");
 
@@ -1669,12 +1665,10 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-const bankValue = realBankAccount || bankAccHidden.value;
-
-if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
-  showError(bankAccInput, "Required Account number (8-18 digits)", silent);
-  ok = false;
-}
+    if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
+      showError(bankAccInput, "Required Account number(8-18 digits)", silent);
+      ok = false;
+    }
 
 
 
@@ -1700,14 +1694,14 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
       ok = false;
     }
 
-    step.querySelectorAll("input, textarea").forEach(el => {
-      if (isSkippable(el)) return;
+    // step.querySelectorAll("input, textarea").forEach(el => {
+    //   if (isSkippable(el)) return;
 
-      if (!el.value.trim()) {
-        showError(el, "Required", silent);
-        ok = false;
-      }
-    });
+    //   if (!el.value.trim()) {
+    //     showError(el, "Required", silent);
+    //     ok = false;
+    //   }
+    // });
 
     // ----- PAN -----
     const email = step.querySelector("#email");
@@ -1868,28 +1862,70 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
       return false;
     }
 
+    const degreeSet = new Set();
+    const currentYear = new Date().getFullYear();
+    const dobYear = new Date(document.getElementById("dob")?.value).getFullYear();
+
     if (!validateStep3Languages(silent)) {
       ok = false;
     }
 
     let graduationLeavingYear = 0;
+
     rows.forEach((row, index) => {
-      const college = row.querySelector("[name='collegeName']");
-      const board = row.querySelector("[name='board']");
-      const degree = row.querySelector("[name='degree']");
-      const stream = row.querySelector("[name='stream']");
-      const joinYear = row.querySelector("[name='joiningYear']");
-      const leaveYear = row.querySelector("[name='leavingYear']");
-      const percent = row.querySelector("[name='percentage']");
+      const college = row.querySelector("input[name='collegeName']");
+      const board = row.querySelector("input[name='board']");
+      const degree = row.querySelector("input[name='degree']");
+      const stream = row.querySelector("input[name='stream']");
+      const joinYear = row.querySelector("input[name='joiningYear']");
+      const leaveYear = row.querySelector("input[name='leavingYear']");
+      const percent = row.querySelector("input[name='percentage']");
 
-      if (!college.value) { showError(college, "Required", silent); ok = false; }
-      if (!board.value) { showError(board, "Required", silent); ok = false; }
-      if (!degree.value) { showError(degree, "Required", silent); ok = false; }
-      if (!stream.value && index === 0) { showError(stream, "Required", silent); ok = false; }
+      /* ---------- Prevent Completely Blank Row ---------- */
+      const allEmpty =
+        !college.value.trim() &&
+        !board.value.trim() &&
+        !degree.value.trim() &&
+        !stream.value.trim() &&
+        !joinYear.value.trim() &&
+        !leaveYear.value.trim() &&
+        !percent.value.trim();
 
-      if (!isYear(joinYear.value)) { showError(joinYear, "Invalid year", silent); ok = false; }
-      if (!isYear(leaveYear.value)) { showError(leaveYear, "Invalid year", silent); ok = false; }
+      if (allEmpty) {
+        showError(college, "Fill education details or remove row", silent);
+        ok = false;
+        return;
+      }
 
+      /* ---------- Required Fields ---------- */
+      // ✅ College Name
+      if (!college.value || !isAlphaOnly(college.value)) {
+        showError(college, "Required", silent);
+        ok = false;
+      }
+
+      // ✅ Board
+      if (!board.value || !isAlphaOnly(board.value)) {
+        showError(board, "Required", silent);
+        ok = false;
+      }
+
+      // ✅ Degree
+      if (!degree.value || !isAlphaOnly(degree.value)) {
+        showError(degree, "Required", silent);
+        ok = false;
+      }
+
+      // ✅ Stream (required only for Graduation - index 0)
+      if (index === 0 && !stream.value.trim()) {
+        showError(stream, "Required for Graduation", silent);
+        ok = false;
+      } else if (stream.value && !isAlphaOnly(stream.value)) {
+        showError(stream, "Alphabets only", silent);
+        ok = false;
+      }
+
+      /* ---------- Year Sequencing with Graduation Awareness ---------- */
       if (isYear(joinYear.value) && isYear(leaveYear.value)) {
 
         if (+leaveYear.value <= +joinYear.value) {
@@ -1897,6 +1933,7 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
           ok = false;
         }
 
+        // Graduation row (index 0)
         if (index === 0) {
           if (+leaveYear.value - +joinYear.value > 6) {
             showError(leaveYear, "Graduation duration cannot exceed 6 years", silent);
@@ -1905,6 +1942,7 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
           graduationLeavingYear = +leaveYear.value;
         }
 
+        // Pre-graduation rows (1 & 2: Intermediate/Diploma, Schooling)
         if (index === 1 || index === 2) {
           if (+leaveYear.value > graduationLeavingYear) {
             showError(leaveYear, "Must be completed before Graduation", silent);
@@ -1912,6 +1950,7 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
           }
         }
 
+        // Post-graduation rows (3+: Masters, PhD, etc.)
         if (index >= 3) {
           if (+joinYear.value <= graduationLeavingYear) {
             showError(joinYear, "Must be after Graduation", silent);
@@ -1920,9 +1959,57 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
         }
       }
 
+      /* ---------- Year Validation ---------- */
+      if (!isYear(joinYear.value)) {
+        showError(joinYear, "Enter valid 4-digit joining year", silent);
+        ok = false;
+      } else if (+joinYear.value > currentYear) {
+        showError(joinYear, "Joining year cannot be in the future", silent);
+        ok = false;
+      } else if (dobYear && +joinYear.value < dobYear + 5) {
+        showError(joinYear, "Joining year is not realistic", silent);
+        ok = false;
+      }
+
+      if (!isYear(leaveYear.value)) {
+        showError(leaveYear, "Enter valid 4-digit leaving year", silent);
+        ok = false;
+      } else if (+leaveYear.value > currentYear) {
+        showError(leaveYear, "Leaving year cannot be in the future", silent);
+        ok = false;
+      }
+
+      if (
+        isYear(joinYear.value) &&
+        isYear(leaveYear.value) &&
+        +leaveYear.value > +joinYear.value
+      ) {
+        if (+leaveYear.value - +joinYear.value > 10) {
+          showError(leaveYear, "Education duration seems invalid (>10 yrs)", silent);
+          ok = false;
+        }
+      }
+
+      /* ---------- Percentage ---------- */
       if (!percent.value || percent.value < 0 || percent.value > 100) {
         showError(percent, "0–100 only", silent);
         ok = false;
+      } else if (percent.value < 35) {
+        showError(percent, "Minimum 35% required", silent);
+        ok = false;
+      }
+
+      /* ---------- Prevent Duplicate Degrees ---------- */
+      if (degree.value.trim()) {
+        const degreeKey =
+          degree.value.trim().toLowerCase() + "_" +
+          stream.value.trim().toLowerCase();
+
+        if (degreeSet.has(degreeKey)) {
+          showError(degree, "Duplicate degree entry", silent);
+          ok = false;
+        }
+        degreeSet.add(degreeKey);
       }
     });
 
@@ -1984,9 +2071,6 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
     else {
       if (extraError) extraError.style.display = "none";
     }
-
-
-
 
     const motherTongueSelected = document.querySelector(
       "#languageTable input[name='motherTongue']:checked"
@@ -2055,6 +2139,40 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
   /* =========================================================
     STEP 4 – EXPERIENCE
   ========================================================= */
+  function toggleExperienceDependentSections() {
+    const years = Number(document.getElementById("expYears")?.value || 0);
+    const months = Number(document.getElementById("expMonths")?.value || 0);
+    const hasExperience = years > 0 || months > 0;
+
+    // Toggle UAN
+    const uanContainer = document.getElementById("uanContainer");
+    if (uanContainer) {
+      uanContainer.style.display = hasExperience ? "block" : "none";
+      if (!hasExperience) {
+        const uanInput = document.getElementById("uan");
+        if (uanInput) {
+          uanInput.value = "";
+          clearError(uanInput);
+        }
+      }
+    }
+
+    // Toggle Employment History & Assignments
+    const empHistory = document.getElementById("employmentHistory");
+    const assignments = document.getElementById("assignmentsHandled");
+
+    if (empHistory) empHistory.style.display = hasExperience ? "block" : "none";
+    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
+  }
+
+  // Bind events
+  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
+  document.getElementById("expMonths")?.addEventListener("input", toggleExperienceDependentSections);
+  // Call once on load/init logic (handled in restoreDraftState or similar, but good to ensure)
+
+  /* =========================================================
+    STEP 4 – EXPERIENCE
+  ========================================================= */
   function validateStep4(silent = false) {
     const step = steps[3];
     if (!silent) clearStepErrors(step);
@@ -2081,6 +2199,33 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
 
     const hasExperience = years > 0 || months > 0;
 
+    /* ================= EXPERIENCE DATE VALIDATION ================= */
+    const fromDateEl = step.querySelector("#expFrom");
+    const toDateEl = step.querySelector("#expTo");
+
+    if (hasExperience && fromDateEl && toDateEl) {
+
+      if (!fromDateEl.value) {
+        showError(fromDateEl, "From date is required", silent);
+        ok = false;
+      }
+
+      if (!toDateEl.value) {
+        showError(toDateEl, "To date is required", silent);
+        ok = false;
+      }
+
+      if (fromDateEl.value && toDateEl.value) {
+        const fromDate = new Date(fromDateEl.value);
+        const toDate = new Date(toDateEl.value);
+
+        if (toDate <= fromDate) {
+          showError(toDateEl, "To Date must be greater than From Date", silent);
+          ok = false;
+        }
+      }
+    }
+
     /* ================= UAN (REQUIRED IF EXPERIENCED) ================= */
     const uan = document.getElementById("uan");
     if (hasExperience && uan) {
@@ -2104,6 +2249,7 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
           }
         });
 
+
       /* ================= ASSIGNMENTS HANDLED ================= */
       step
         .querySelectorAll("#assignmentsHandled input, #assignmentsHandled textarea")
@@ -2118,10 +2264,17 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
 
     }
     if (!ok && !silent) {
-      showSummaryError(
-        step,
-        "Please complete Total Experience, Employment History, and Assignments"
-      );
+      if (hasExperience) {
+        showSummaryError(
+          step,
+          "Please fill all the fields"
+        );
+      } else {
+        showSummaryError(
+          step,
+          "Please enter valid Total Experience details"
+        );
+      }
       focusFirstError(step);
     }
     return ok;
@@ -2201,17 +2354,54 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
 
   // ================= STEP 5 – VALIDATION =================
   function validateStep5(silent = false) {
+    const step = steps[4];
+    let ok = true;
+
+    if (!silent) clearStepErrors(step);
+
+    /* ===== Interview Conditional Validation ===== */
+    const interviewDropdown = step.querySelector("#interviewedBefore");
+    const interviewDate = step.querySelector("#interviewDate");
+    const interviewPlace = step.querySelector("#interviewPlace");
+    const interviewerName = step.querySelector("#interviewerName");
+    const interviewPost = step.querySelector("#interviewPost");
+
+    if (!interviewDropdown?.value) {
+      showError(interviewDropdown, "Please select an option", silent);
+      ok = false;
+    }
+
+    if (interviewDropdown?.value === "yes") {
+
+      if (!interviewDate?.value) {
+        showError(interviewDate, "Interview date is required", silent);
+        ok = false;
+      }
+
+      if (!interviewPlace?.value.trim()) {
+        showError(interviewPlace, "Place is required", silent);
+        ok = false;
+      }
+
+      if (!interviewerName?.value.trim()) {
+        showError(interviewerName, "Interviewer name is required", silent);
+        ok = false;
+      }
+
+      if (!interviewPost?.value.trim()) {
+        showError(interviewPost, "Post is required", silent);
+        ok = false;
+      }
+    }
+
     const years = Number(document.getElementById("expYears")?.value || 0);
     const months = Number(document.getElementById("expMonths")?.value || 0);
     const hasExperience = years > 0 || months > 0;
 
-    if (!silent) clearStepErrors(step5);
-    let ok = true;
-
     /* ===== ALWAYS REQUIRED ===== */
-    const declaration = step5.querySelector("#declaration");
-    const declDate = step5.querySelector("#declDate");
-    const declPlace = step5.querySelector("#declPlace");
+    const declaration = step.querySelector("#declaration");
+    const declDate = step.querySelector("#declDate");
+    const declPlace = step.querySelector("#declPlace");
 
     if (!declaration?.checked) {
       showError(declaration, "Declaration is required", silent);
@@ -2267,6 +2457,7 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
       }
     }
 
+
     /* ================= EXPERIENCE DEPENDENT ================= */
     if (hasExperience) {
 
@@ -2281,18 +2472,21 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
 
 
       /* ================= PRESENT SALARY (REQUIRED) ================= */
-      salarySection
-        ?.querySelectorAll("input, select")
-        .forEach(el => {
-          if (isSkippable(el)) return;
-          if (
-            !el.value ||
-            (el.type === "number" && Number(el.value) <= 0)
-          ) {
-            showError(el, "Required", silent);
-            ok = false;
-          }
-        });
+      step.querySelectorAll("#salarySection input").forEach(el => {
+
+        if (isSkippable(el)) return;
+
+        // Skip "Others" fields
+        if (el.id === "monthlyOthers" || el.id === "statutoryOthers") {
+          return;
+        }
+
+        if (!el.value.trim()) {
+          showError(el, "This field is required", silent);
+          ok = false;
+        }
+      });
+
 
 
       /* ================= OTHER PARTICULARS (REQUIRED) ================= */
@@ -2331,7 +2525,6 @@ if (!bankValue || bankValue.length < 8 || bankValue.length > 18) {
       });
 
       if (validRefs === 0 && refs.length > 0) {
-        // ✅ Force highlight
         refs[0]
           .querySelectorAll("input")
           .forEach(i => showError(i, "Required", silent));

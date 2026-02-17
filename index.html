@@ -156,7 +156,7 @@
 
             <div class="form-field">
               <input type="tel" placeholder="Permanent Mobile Number" id="mobile1" class="mobile-input" maxlength="10"
-                inputmode="numeric" readonly>
+                inputmode="numeric" name="permanentMobile" readonly>
             </div>
           </div>
 
@@ -213,11 +213,11 @@
 
           <div class="grid-2">
             <div class="illness-fields">
-              <input placeholder="Illness Name" id="illnessName">
+              <input placeholder="Illness Name" id="illnessName" name="illnessName">
             </div>
 
             <div class="illness-fields">
-              <input placeholder="Illness Duration" id="illnessDuration">
+              <input placeholder="Illness Duration" id="illnessDuration" name="illnessDuration">
             </div>
 
           </div>
@@ -238,7 +238,10 @@
               <input type="text" id="aadhaarDisplay" placeholder="Aadhaar Number">
             </div>
 
-          <div class="grid-2">
+          </div>
+          </div>
+<br>
+          <div class="grid-3">
             <div class="form-field">
               <input type="text" placeholder="Bank Name" id="bankName" name="bankName">
             </div>
@@ -248,7 +251,7 @@
             </div>
           </div>
 
-          <div class="grid-2">
+          <div class="grid-3">
             <div class="form-field">
               <input placeholder="IFSC Code" id="ifsc" name="ifsc">
             </div>
@@ -263,7 +266,7 @@
           </div>
           <div class="form-field">
             <input type="tel" placeholder="Mobile Number" id="mobile2" class="mobile-input" maxlength="10"
-              inputmode="numeric" readonly>
+              inputmode="numeric" name="alternateMobile" readonly>
           </div>
         </section>
 
@@ -526,9 +529,12 @@
           <div id="employmentHistory">
 
             <h4>Employment History (Present to Past)</h4>
+
+            <!-- UAN Number (Conditional) -->
             <div class="form-field" id="uanContainer" style="display:none;">
-              <input type="text" id="uan" placeholder="UAN Number" name="uan">
+              <input type="text" id="uan" name="uan" placeholder="UAN Number" maxlength="12"    inputmode="numeric">
             </div>
+
             <div class="grid-2">
               <div class="form-field">
                 <input type="text" placeholder="Company Name" name="companyName">
@@ -569,10 +575,11 @@
 
             <div class="grid-2">
               <div class="form-field">
-                <input type="number" placeholder="Gross Salary While Leaving">
+                <input type="number" placeholder="Gross Salary While Leaving" name="grossSalaryLeaving">
               </div>
               <div class="form-field">
-                <input type="text" placeholder="Reason for Leaving" id="reasonForLeaving">
+                <input type="text" placeholder="Reason for Leaving" id="reasonForLeaving" name="reasonForLeaving"
+>
               </div>
             </div>
 
@@ -651,9 +658,9 @@
                   <td>Education Allowance</td>
                   <td><input type="number" name="salary_education"></td>
                   <td>Others</td>
-                  <td><input type="number" name="salary_other1"></td>
+                  <td><input type="number" id="monthlyOthers" name="monthlyOthers"></td>
                   <td>Others</td>
-                  <td><input type="number" name="salary_other2"></td>
+                  <td><input type="number" id="statutoryOthers" name="statutoryOthers"></td>
                 </tr>
                 <tr>
                   <td>House Rent Allowance</td>
@@ -687,7 +694,7 @@
 
             <div class="form-field">
               <label>Details of other perquisites</label>
-              <textarea></textarea>
+              <textarea name="otherPerquisites"></textarea>
             </div>
           </div>
           <hr>
@@ -703,14 +710,15 @@
             </select>
           </div>
 
-          <div class="grid-3" id="loanFields" style="display:none;">
-            <div class="form-field"><input id="loanPurpose" placeholder="Purpose of Loan" name="loanPurpose"></div>
-            <div class="form-field"><input id="loanAmount" type="number" placeholder="Loan Amount" name="loanAmount">
-            </div>
-            <div class="form-field"><input id="loanBalance" type="number" placeholder="Balance Amount"
-                name="loanBalance"></div>
-            <div class="form-field"><input id="loanSalary" type="number" placeholder="Expected Salary"
-                name="loanSalary"></div>
+          <div class="grid-2" id="loanFields" style="display:none;">
+            <div class="form-field">
+              <input id="loanPurpose" placeholder="Purpose of Loan" name="loanPurpose"></div>
+            <div class="form-field">
+              <input id="loanAmount" type="text" placeholder="Loan Amount" name="loanAmount" min="0" maxlength="8" inputmode="numeric"></div>
+            <div class="form-field">
+              <input id="loanBalance" type="text" placeholder="Balance Amount" name="loanBalance" min="0" maxlength="8" inputmode="numeric"></div>
+            <div class="form-field">
+              <input id="loanSalary" type="text" placeholder="Expected Salary" name="loanSalary" min="0" maxlength="8" inputmode="numeric"></div>
           </div>
 
           <div id="referenceSection">
@@ -760,22 +768,24 @@
               <div class="form-field">
                 <input type="number" placeholder="How soon can you join (Days)" name="joiningDays">
               </div>
+              
               <div class="form-field">
-                <select name="interviewedBefore">
+                <select name="interviewedBefore" id="interviewedBefore">
                   <option>Have you been interviewed by us before?</option>
                   <option>Yes</option>
                   <option>No</option>
                 </select>
               </div>
             </div>
-
+            <div id="interviewDetails" style="display: none;">
             <div class="grid-3">
-              <div class="form-field"><input type="date" placeholder="Date" name="interviewDate"></div>
-              <div class="form-field"><input placeholder="Place" name="interviewPlace"></div>
-              <div class="form-field"><input placeholder="Name of Interviewer" name="interviewerName"></div>
+              <div class="form-field"><input type="date" placeholder="Date" name="interviewDate" id="interviewDate"></div>
+              <div class="form-field"><input placeholder="Place" name="interviewPlace" id="interviewPlace"></div>
+              <div class="form-field"><input placeholder="Name of Interviewer" name="interviewerName" id="interviewerName"></div>
             </div>
 
-            <div class="form-field"><input placeholder="For which post" name="interviewPost"></div>
+            <div class="form-field"><input placeholder="For which post" name="interviewPost" id="interviewPost"></div>
+            </div>
           </section>
           <hr>
 
