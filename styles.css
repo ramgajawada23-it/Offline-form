@@ -179,16 +179,13 @@ body {
 
 /* ================= SIDEBAR ================= */
 .sidebar {
-  position: fixed;
-  font-style: italic;
   width: 260px;
-  height: 85vh;
+  font-style: italic;
   border-radius: 10px;
   background-image: url("sideimg1.jpg");
   background-repeat: no-repeat;
   background-position: center center;
   background-size: cover;
-
 }
 
 .sidebar-title {
@@ -269,10 +266,8 @@ body {
 
 /* ================= MAIN CONTAINER ================= */
 .container {
-  margin-left: 260px;
-  /* SIDEBAR SPACE */
+  flex: 1;
   padding: 20px;
-  width: calc(100% - 260px);
 }
 
 .container>form {
