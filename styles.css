@@ -269,10 +269,8 @@ body {
 
 /* ================= MAIN CONTAINER ================= */
 .container {
-  margin-left: 260px;
-  /* SIDEBAR SPACE */
+  flex: 1;
   padding: 20px;
-  width: calc(100% - 260px);
 }
 
 .container>form {

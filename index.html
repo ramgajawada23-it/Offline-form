@@ -239,35 +239,34 @@
             </div>
 
           </div>
+        </section>
+        <div class="grid-3">
+          <div class="form-field">
+            <input type="text" placeholder="Bank Name" id="bankName" name="bankName">
           </div>
-<br>
-          <div class="grid-3">
-            <div class="form-field">
-              <input type="text" placeholder="Bank Name" id="bankName" name="bankName">
-            </div>
-            <div class="form-field">
-              <input type="hidden" id="bankAccount" name="bankAccount">
-              <input type="text" id="bankAccountDisplay" placeholder="Account Number">
-            </div>
+          <div class="form-field">
+            <input type="hidden" id="bankAccount" name="bankAccount">
+            <input type="text" id="bankAccountDisplay" placeholder="Account Number">
           </div>
+        </div>
 
-          <div class="grid-3">
-            <div class="form-field">
-              <input placeholder="IFSC Code" id="ifsc" name="ifsc">
-            </div>
-            <div class="form-field">
-              <input placeholder="Branch Name" id="branch" name="branch">
-            </div>
+        <div class="grid-3">
+          <div class="form-field">
+            <input placeholder="IFSC Code" id="ifsc" name="ifsc">
           </div>
           <div class="form-field">
-            <!-- <span class="required"></span> -->
-            <input type="email" id="email" name="email" placeholder="Enter Email Address" autocomplete="email">
-            <small class="error-text" style="display:none;"></small>
+            <input placeholder="Branch Name" id="branch" name="branch">
           </div>
-          <div class="form-field">
-            <input type="tel" placeholder="Mobile Number" id="mobile2" class="mobile-input" maxlength="10"
-              inputmode="numeric" name="alternateMobile" readonly>
-          </div>
+        </div>
+        <div class="form-field">
+          <!-- <span class="required"></span> -->
+          <input type="email" id="email" name="email" placeholder="Enter Email Address" autocomplete="email">
+          <small class="error-text" style="display:none;"></small>
+        </div>
+        <div class="form-field">
+          <input type="tel" placeholder="Mobile Number" id="mobile2" class="mobile-input" maxlength="10"
+            inputmode="numeric" name="alternateMobile" readonly>
+        </div>
         </section>
 
         <!-- ================= STEP 2 ================= -->
@@ -532,7 +531,7 @@
 
             <!-- UAN Number (Conditional) -->
             <div class="form-field" id="uanContainer" style="display:none;">
-              <input type="text" id="uan" name="uan" placeholder="UAN Number" maxlength="12"    inputmode="numeric">
+              <input type="text" id="uan" name="uan" placeholder="UAN Number" maxlength="12" inputmode="numeric">
             </div>
 
             <div class="grid-2">
@@ -578,8 +577,7 @@
                 <input type="number" placeholder="Gross Salary While Leaving" name="grossSalaryLeaving">
               </div>
               <div class="form-field">
-                <input type="text" placeholder="Reason for Leaving" id="reasonForLeaving" name="reasonForLeaving"
->
+                <input type="text" placeholder="Reason for Leaving" id="reasonForLeaving" name="reasonForLeaving">
               </div>
             </div>
 
@@ -712,13 +710,20 @@
 
           <div class="grid-2" id="loanFields" style="display:none;">
             <div class="form-field">
-              <input id="loanPurpose" placeholder="Purpose of Loan" name="loanPurpose"></div>
+              <input id="loanPurpose" placeholder="Purpose of Loan" name="loanPurpose">
+            </div>
             <div class="form-field">
-              <input id="loanAmount" type="text" placeholder="Loan Amount" name="loanAmount" min="0" maxlength="8" inputmode="numeric"></div>
+              <input id="loanAmount" type="text" placeholder="Loan Amount" name="loanAmount" min="0" maxlength="8"
+                inputmode="numeric">
+            </div>
             <div class="form-field">
-              <input id="loanBalance" type="text" placeholder="Balance Amount" name="loanBalance" min="0" maxlength="8" inputmode="numeric"></div>
+              <input id="loanBalance" type="text" placeholder="Balance Amount" name="loanBalance" min="0" maxlength="8"
+                inputmode="numeric">
+            </div>
             <div class="form-field">
-              <input id="loanSalary" type="text" placeholder="Expected Salary" name="loanSalary" min="0" maxlength="8" inputmode="numeric"></div>
+              <input id="loanSalary" type="text" placeholder="Expected Salary" name="loanSalary" min="0" maxlength="8"
+                inputmode="numeric">
+            </div>
           </div>
 
           <div id="referenceSection">
@@ -768,7 +773,7 @@
               <div class="form-field">
                 <input type="number" placeholder="How soon can you join (Days)" name="joiningDays">
               </div>
-              
+
               <div class="form-field">
                 <select name="interviewedBefore" id="interviewedBefore">
                   <option>Have you been interviewed by us before?</option>
@@ -778,13 +783,15 @@
               </div>
             </div>
             <div id="interviewDetails" style="display: none;">
-            <div class="grid-3">
-              <div class="form-field"><input type="date" placeholder="Date" name="interviewDate" id="interviewDate"></div>
-              <div class="form-field"><input placeholder="Place" name="interviewPlace" id="interviewPlace"></div>
-              <div class="form-field"><input placeholder="Name of Interviewer" name="interviewerName" id="interviewerName"></div>
-            </div>
+              <div class="grid-3">
+                <div class="form-field"><input type="date" placeholder="Date" name="interviewDate" id="interviewDate">
+                </div>
+                <div class="form-field"><input placeholder="Place" name="interviewPlace" id="interviewPlace"></div>
+                <div class="form-field"><input placeholder="Name of Interviewer" name="interviewerName"
+                    id="interviewerName"></div>
+              </div>
 
-            <div class="form-field"><input placeholder="For which post" name="interviewPost" id="interviewPost"></div>
+              <div class="form-field"><input placeholder="For which post" name="interviewPost" id="interviewPost"></div>
             </div>
           </section>
           <hr>
