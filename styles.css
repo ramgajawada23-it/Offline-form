@@ -180,9 +180,12 @@ body {
 /* ================= SIDEBAR ================= */
 .sidebar {
   position: fixed;
+  top: 120px;
   font-style: italic;
+  left: 0;
   width: 260px;
-  height: 85vh;
+  /* height: 85vh; */
+  height: calc(100vh - 120px);
   border-radius: 10px;
   background-image: url("sideimg1.jpg");
   background-repeat: no-repeat;
@@ -270,8 +273,10 @@ body {
 /* ================= MAIN CONTAINER ================= */
 .container {
   flex: 1;
+  margin-left: 260px;
   padding: 20px;
 }
+
 
 .container>form {
   max-width: 950px;
@@ -683,11 +688,6 @@ textarea.error {
 } */
 
 /* Prevent row height jump */
-.education-table td {
-  vertical-align: top;
-  padding-bottom: 22px;
-}
-
 
 .education-section {
   margin-top: 15px;
@@ -701,8 +701,9 @@ textarea.error {
 .education-table th,
 .education-table td {
   border: 1px solid #ddd;
-  padding: 4px;
+  padding: 6px;
   text-align: center;
+  vertical-align: top;
 }
 
 .education-table th {
@@ -714,6 +715,14 @@ textarea.error {
   padding: 6px;
   box-sizing: border-box;
 }
+
+.education-table .error-text {
+  position: static;
+  display: block;
+  margin-top: 4px;
+}
+
+
 
 .btn-add {
   margin-top: 10px;

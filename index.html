@@ -239,34 +239,34 @@
             </div>
 
           </div>
-        </section>
-        <div class="grid-3">
-          <div class="form-field">
-            <input type="text" placeholder="Bank Name" id="bankName" name="bankName">
-          </div>
-          <div class="form-field">
-            <input type="hidden" id="bankAccount" name="bankAccount">
-            <input type="text" id="bankAccountDisplay" placeholder="Account Number">
-          </div>
-        </div>
 
-        <div class="grid-3">
-          <div class="form-field">
-            <input placeholder="IFSC Code" id="ifsc" name="ifsc">
+          <div class="grid-3">
+            <div class="form-field">
+              <input type="text" placeholder="Bank Name" id="bankName" name="bankName">
+            </div>
+            <div class="form-field">
+              <input type="hidden" id="bankAccount" name="bankAccount">
+              <input type="text" id="bankAccountDisplay" placeholder="Account Number">
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-field">
+              <input placeholder="IFSC Code" id="ifsc" name="ifsc">
+            </div>
+            <div class="form-field">
+              <input placeholder="Branch Name" id="branch" name="branch">
+            </div>
           </div>
           <div class="form-field">
-            <input placeholder="Branch Name" id="branch" name="branch">
+            <!-- <span class="required"></span> -->
+            <input type="email" id="email" name="email" placeholder="Enter Email Address" autocomplete="email">
+            <small class="error-text" style="display:none;"></small>
           </div>
-        </div>
-        <div class="form-field">
-          <!-- <span class="required"></span> -->
-          <input type="email" id="email" name="email" placeholder="Enter Email Address" autocomplete="email">
-          <small class="error-text" style="display:none;"></small>
-        </div>
-        <div class="form-field">
-          <input type="tel" placeholder="Mobile Number" id="mobile2" class="mobile-input" maxlength="10"
-            inputmode="numeric" name="alternateMobile" readonly>
-        </div>
+          <div class="form-field">
+            <input type="tel" placeholder="Mobile Number" id="mobile2" class="mobile-input" maxlength="10"
+              inputmode="numeric" name="alternateMobile" readonly>
+          </div>
         </section>
 
         <!-- ================= STEP 2 ================= -->
@@ -349,29 +349,101 @@
         <!-- ================= STEP 3 ================= -->
         <section class="form-step">
 
-          <h3 class="section-title">Education & Qualifications (Graduation)</h3>
+          <h3 class="section-title">Education & Qualifications</h3>
 
           <div class="education-section">
+
+            <!-- ================= FIXED GRADUATION ================= -->
+            <h4>Graduation</h4>
+            <div class="graduation-wrapper">
+
+              <!-- First Fixed Graduation Table (NO DELETE) -->
+              <table class="education-table">
+                <thead>
+                  <tr>
+                    <th>College Name</th>
+                    <th>Board / University</th>
+                    <th>Degree</th>
+                    <th>Stream</th>
+                    <th>Joining Year</th>
+                    <th>Leaving Year</th>
+                    <th>Aggregate %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="text" name="grad_college[]"></td>
+                    <td><input type="text" name="grad_board[]"></td>
+                    <td><input type="text" name="grad_degree[]"></td>
+                    <td><input type="text" name="grad_stream[]"></td>
+                    <td><input type="number" name="grad_joining[]"></td>
+                    <td><input type="number" name="grad_leaving[]"></td>
+                    <td><input type="number" name="grad_aggregate[]"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Added graduation tables will appear here -->
+              <div id="extraGraduations"></div>
+
+            </div>
+
+            <br>
+
+            <!-- ================= INTERMEDIATE ================= -->
+            <h4>Intermediate</h4>
             <table class="education-table">
               <thead>
                 <tr>
-                  <th>College / School</th>
-                  <th>Board / University</th>
-                  <th>Degree / Exam</th>
+                  <th>College Name</th>
+                  <th>Board</th>
                   <th>Stream</th>
                   <th>Joining Year</th>
                   <th>Leaving Year</th>
                   <th>Aggregate %</th>
                 </tr>
               </thead>
-
-              <tbody id="educationTableBody">
-                <!-- First row will be inserted by JS -->
+              <tbody>
+                <tr>
+                  <td><input type="text" name="inter_college"></td>
+                  <td><input type="text" name="inter_board"></td>
+                  <td><input type="text" name="inter_stream"></td>
+                  <td><input type="number" name="inter_joining"></td>
+                  <td><input type="number" name="inter_leaving"></td>
+                  <td><input type="number" name="inter_aggregate"></td>
+                </tr>
               </tbody>
             </table>
 
+            <br>
+
+            <!-- ================= 10TH ================= -->
+            <h4>10th / Schooling</h4>
+            <table class="education-table">
+              <thead>
+                <tr>
+                  <th>School Name</th>
+                  <th>Board</th>
+                  <th>Joining Year</th>
+                  <th>Leaving Year</th>
+                  <th>Aggregate %</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input type="text" name="school_name"></td>
+                  <td><input type="text" name="school_board"></td>
+                  <td><input type="number" name="school_joining"></td>
+                  <td><input type="number" name="school_leaving"></td>
+                  <td><input type="number" name="school_aggregate"></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <br>
+
             <button type="button" id="addEducationBtn" class="btn-add">
-              + Add More
+              Add Education
             </button>
           </div>
 
@@ -468,7 +540,7 @@
                   <td><input type="checkbox" name="lang_english_speak"></td>
                   <td><input type="checkbox" name="lang_english_read"></td>
                   <td><input type="checkbox" name="lang_english_write"></td>
-                  <td><input type="radio" name="motherTongue" value="English">
+                  <td><input type="radio" name="motherTongue" value="english">
                   </td>
                 </tr>
 
@@ -478,7 +550,7 @@
                   <td><input type="checkbox" name="lang_hindi_speak"></td>
                   <td><input type="checkbox" name="lang_hindi_read"></td>
                   <td><input type="checkbox" name="lang_hindi_write"></td>
-                  <td><input type="radio" name="motherTongue" value="Hindi">
+                  <td><input type="radio" name="motherTongue" value="hindi">
                   </td>
                 </tr>
               </tbody>

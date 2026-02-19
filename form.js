@@ -212,10 +212,31 @@ function restoreLanguageRows(fields) {
 
   if (maxIndex < 0) return;
 
+  addFixedLanguageRow("English");
+  addFixedLanguageRow("Hindi");
+
   for (let i = 0; i <= maxIndex; i++) {
     document.getElementById("addLanguageBtn")?.click();
   }
 }
+
+function addFixedLanguageRow(name) {
+  const tbody = document.querySelector("#languageTable tbody");
+  const index = tbody.querySelectorAll("tr").length;
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>
+      <input type="text" name="languages[${index}][name]" value="${name}">
+    </td>
+    <td><input type="checkbox" name="languages[${index}][speak]"></td>
+    <td><input type="checkbox" name="languages[${index}][read]"></td>
+    <td><input type="checkbox" name="languages[${index}][write]"></td>
+    <td><input type="radio" name="motherTongue" value="${index}"></td>
+  `;
+  tbody.appendChild(tr);
+}
+
 
 function restoreFormData(data) {
   if (!data) return;
@@ -855,34 +876,23 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
 
-  function setupEducationTable() {
-    const tbody = document.getElementById("educationTableBody");
-    if (!tbody) return;
+function setupEducationTable() {
+  const tbody = document.getElementById("educationTableBody");
+  if (!tbody) return;
 
-    tbody.innerHTML = "";
+  tbody.innerHTML = "";
 
-    // ===== ROW 1 – GRADUATION =====
-    addEducationRow({
-      degree: "Graduation"
-    }, false);
+  // ✅ Add 3 fixed rows initially
+  addEducationRow(null, false); // Graduation
+  addEducationRow(null, false); // Intermediate
+  addEducationRow(null, false); // Schooling
 
-    // ===== ROW 2 – INTERMEDIATE / DIPLOMA =====
-    addEducationRow({
-      degree: "Intermediate / Diploma"
-    }, false);
-
-    // ===== ROW 3 – SCHOOLING =====
-    addEducationRow({
-      degree: "Schooling"
-    }, false);
-
-    const addBtn = document.getElementById("addEducationBtn");
-    addBtn?.addEventListener("click", () => {
-      addEducationRow(null, true); // extra row with delete
-      debouncedSaveDraft();
-    });
-  }
-
+  const addBtn = document.getElementById("addEducationBtn");
+  addBtn?.addEventListener("click", () => {
+    addEducationRow(null, true);
+    debouncedSaveDraft();
+  });
+}
 
   function removeRow(btn) {
     btn.closest("tr").remove();
@@ -1870,7 +1880,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    let graduationLeavingYear = 0;
+    let graduationLeavingYear = null;
 
     rows.forEach((row, index) => {
       const college = row.querySelector("input[name='collegeName']");
@@ -1917,8 +1927,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // ✅ Stream (required only for Graduation - index 0)
-      if (index === 0 && !stream.value.trim()) {
-        showError(stream, "Required for Graduation", silent);
+      if ((index === 0 || index >= 3) && !stream.value.trim()) {
+        showError(stream, "Required", silent);
         ok = false;
       } else if (stream.value && !isAlphaOnly(stream.value)) {
         showError(stream, "Alphabets only", silent);
@@ -1942,21 +1952,23 @@ document.addEventListener("DOMContentLoaded", () => {
           graduationLeavingYear = +leaveYear.value;
         }
 
-        // Pre-graduation rows (1 & 2: Intermediate/Diploma, Schooling)
-        if (index === 1 || index === 2) {
-          if (+leaveYear.value > graduationLeavingYear) {
+        // Pre-graduation rows (1 & 2)
+        if ((index === 1 || index === 2) && graduationLeavingYear !== null) {
+          if (+leaveYear.value >= graduationLeavingYear) {
             showError(leaveYear, "Must be completed before Graduation", silent);
             ok = false;
           }
         }
 
-        // Post-graduation rows (3+: Masters, PhD, etc.)
-        if (index >= 3) {
+        // Post-graduation rows (3+)
+        if (index >= 3 && graduationLeavingYear !== null) {
           if (+joinYear.value <= graduationLeavingYear) {
-            showError(joinYear, "Must be after Graduation", silent);
+            showError(joinYear, "Post-graduation must start after Graduation", silent);
             ok = false;
           }
         }
+
+
       }
 
       /* ---------- Year Validation ---------- */
@@ -1991,16 +2003,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       /* ---------- Percentage ---------- */
-      if (!percent.value || percent.value < 0 || percent.value > 100) {
-        showError(percent, "0–100 only", silent);
+      if (percent.value === "" || isNaN(percent.value)) {
+        showError(percent, "Required", silent);
         ok = false;
-      } else if (percent.value < 35) {
+      } else if (percent.value < 35 || percent.value > 100) {
         showError(percent, "Minimum 35% required", silent);
         ok = false;
       }
 
+
       /* ---------- Prevent Duplicate Degrees ---------- */
-      if (degree.value.trim()) {
+      if (index >= 3 && degree.value.trim()) {
         const degreeKey =
           degree.value.trim().toLowerCase() + "_" +
           stream.value.trim().toLowerCase();
