@@ -876,23 +876,23 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
 
-function setupEducationTable() {
-  const tbody = document.getElementById("educationTableBody");
-  if (!tbody) return;
+  function setupEducationTable() {
+    const tbody = document.getElementById("educationTableBody");
+    if (!tbody) return;
 
-  tbody.innerHTML = "";
+    tbody.innerHTML = "";
 
-  // ✅ Add 3 fixed rows initially
-  addEducationRow(null, false); // Graduation
-  addEducationRow(null, false); // Intermediate
-  addEducationRow(null, false); // Schooling
+    // ✅ Add 3 fixed rows initially
+    addEducationRow(null, false); // Graduation
+    addEducationRow(null, false); // Intermediate
+    addEducationRow(null, false); // Schooling
 
-  const addBtn = document.getElementById("addEducationBtn");
-  addBtn?.addEventListener("click", () => {
-    addEducationRow(null, true);
-    debouncedSaveDraft();
-  });
-}
+    const addBtn = document.getElementById("addEducationBtn");
+    addBtn?.addEventListener("click", () => {
+      addEducationRow(null, true);
+      debouncedSaveDraft();
+    });
+  }
 
   function removeRow(btn) {
     btn.closest("tr").remove();
@@ -1874,13 +1874,25 @@ function setupEducationTable() {
 
     const degreeSet = new Set();
     const currentYear = new Date().getFullYear();
-    const dobYear = new Date(document.getElementById("dob")?.value).getFullYear();
+    const dobValue = document.getElementById("dob")?.value;
+    const dobYear = dobValue ? new Date(dobValue).getFullYear() : null;
+    const member = document.getElementById("member");
+    const honors = document.getElementById("honors");
+
 
     if (!validateStep3Languages(silent)) {
       ok = false;
     }
 
     let graduationLeavingYear = null;
+
+    const gradRow = rows[0];
+    if (gradRow) {
+      const gradLeave = gradRow.querySelector("input[name='leavingYear']");
+      if (isYear(gradLeave.value)) {
+        graduationLeavingYear = +gradLeave.value;
+      }
+    }
 
     rows.forEach((row, index) => {
       const college = row.querySelector("input[name='collegeName']");
@@ -1890,6 +1902,7 @@ function setupEducationTable() {
       const joinYear = row.querySelector("input[name='joiningYear']");
       const leaveYear = row.querySelector("input[name='leavingYear']");
       const percent = row.querySelector("input[name='percentage']");
+
 
       /* ---------- Prevent Completely Blank Row ---------- */
       const allEmpty =
@@ -1909,7 +1922,7 @@ function setupEducationTable() {
 
       /* ---------- Required Fields ---------- */
       // ✅ College Name
-      if (!college.value || !isAlphaOnly(college.value)) {
+      if (!college.value || !/^[A-Za-z0-9 .,'&()-]+$/.test(college.value)) {
         showError(college, "Required", silent);
         ok = false;
       }
@@ -1927,13 +1940,15 @@ function setupEducationTable() {
       }
 
       // ✅ Stream (required only for Graduation - index 0)
-      if ((index === 0 || index >= 3) && !stream.value.trim()) {
+      // ✅ Stream (required for all rows)
+      if (!stream.value.trim()) {
         showError(stream, "Required", silent);
         ok = false;
-      } else if (stream.value && !isAlphaOnly(stream.value)) {
+      } else if (!isAlphaOnly(stream.value)) {
         showError(stream, "Alphabets only", silent);
         ok = false;
       }
+
 
       /* ---------- Year Sequencing with Graduation Awareness ---------- */
       if (isYear(joinYear.value) && isYear(leaveYear.value)) {
@@ -1949,7 +1964,6 @@ function setupEducationTable() {
             showError(leaveYear, "Graduation duration cannot exceed 6 years", silent);
             ok = false;
           }
-          graduationLeavingYear = +leaveYear.value;
         }
 
         // Pre-graduation rows (1 & 2)
@@ -1978,7 +1992,7 @@ function setupEducationTable() {
       } else if (+joinYear.value > currentYear) {
         showError(joinYear, "Joining year cannot be in the future", silent);
         ok = false;
-      } else if (dobYear && +joinYear.value < dobYear + 5) {
+      } else if (dobYear !== null && +joinYear.value < dobYear + 5) {
         showError(joinYear, "Joining year is not realistic", silent);
         ok = false;
       }
@@ -2003,17 +2017,18 @@ function setupEducationTable() {
       }
 
       /* ---------- Percentage ---------- */
-      if (percent.value === "" || isNaN(percent.value)) {
+      const percentValue = Number(percent.value);
+
+      if (percent.value === "" || isNaN(percentValue)) {
         showError(percent, "Required", silent);
         ok = false;
-      } else if (percent.value < 35 || percent.value > 100) {
-        showError(percent, "Minimum 35% required", silent);
+      } else if (percentValue < 35 || percentValue > 100) {
+        showError(percent, "Percentage must be between 35 and 100", silent);
         ok = false;
       }
 
-
       /* ---------- Prevent Duplicate Degrees ---------- */
-      if (index >= 3 && degree.value.trim()) {
+      if (degree.value.trim()) {
         const degreeKey =
           degree.value.trim().toLowerCase() + "_" +
           stream.value.trim().toLowerCase();
@@ -2021,25 +2036,19 @@ function setupEducationTable() {
         if (degreeSet.has(degreeKey)) {
           showError(degree, "Duplicate degree entry", silent);
           ok = false;
+        } else {
+          degreeSet.add(degreeKey);
         }
-        degreeSet.add(degreeKey);
       }
+
     });
 
-    const member = step.querySelector(
-      'select[name="memberOfProfessionalBody"]'
-    );
-
-    const honors = step.querySelector(
-      'select[name="specialHonors"]'
-    );
-
-    if (member && member.value === "Select") {
+    if (!member || !member.value) {
       showError(member, "Please select an option", silent);
       ok = false;
     }
 
-    if (honors && honors.value === "Select") {
+    if (!honors || !honors.value) {
       showError(honors, "Please select an option", silent);
       ok = false;
     }
@@ -2088,15 +2097,12 @@ function setupEducationTable() {
     const motherTongueSelected = document.querySelector(
       "#languageTable input[name='motherTongue']:checked"
     );
-
     if (!motherTongueSelected) {
-      const firstRadio = document.querySelector(
-        "#languageTable input[name='motherTongue']"
-      );
-
-      showError(firstRadio, "Select mother tongue", silent);
+      const radioGroup = document.querySelector("#languageTable");
+      showError(radioGroup, "Select mother tongue", silent);
       ok = false;
     }
+
 
     const strengths = document.getElementById("strengths");
     const weaknesses = document.getElementById("Weaknesses");
@@ -2122,7 +2128,7 @@ function setupEducationTable() {
     step.querySelectorAll("select + textarea").forEach(textarea => {
       const select = textarea.previousElementSibling;
 
-      if (select.value === "Yes" && isBlank(textarea.value)) {
+      if (select.value.toLowerCase() === "yes" && isBlank(textarea.value)) {
         showError(
           textarea,
           "Details are required when 'Yes' is selected",
