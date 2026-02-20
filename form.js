@@ -164,6 +164,19 @@ async function restoreDraftState(data) {
   }
 }
 
+function toggleExperienceDependentSections() {
+  const years = parseInt(document.getElementById("expYears")?.value || 0);
+  const months = parseInt(document.getElementById("expMonths")?.value || 0);
+
+  const show = years > 0 || months > 0;
+
+  const expSection = document.getElementById("experienceDetails");
+
+  if (expSection) {
+    expSection.style.display = show ? "block" : "none";
+  }
+}
+
 function restoreFamilyRows(fields) {
   const tbody = document.getElementById("familyTableBody");
   if (!tbody || !fields) return;
@@ -196,9 +209,9 @@ function restoreFamilyRows(fields) {
 
 function restoreLanguageRows(fields) {
   const tbody = document.querySelector("#languageTable tbody");
-  if (!tbody) return;
+  if (!tbody || !fields) return;
 
-  // 🔥 CLEAR FIRST
+  // Clear all rows first
   tbody.innerHTML = "";
 
   let maxIndex = -1;
@@ -212,30 +225,37 @@ function restoreLanguageRows(fields) {
 
   if (maxIndex < 0) return;
 
-  addFixedLanguageRow("English");
-  addFixedLanguageRow("Hindi");
-
   for (let i = 0; i <= maxIndex; i++) {
-    document.getElementById("addLanguageBtn")?.click();
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>
+        <input type="text" name="languages[${i}][name]">
+      </td>
+      <td>
+        <input type="checkbox" name="languages[${i}][speak]">
+      </td>
+      <td>
+        <input type="checkbox" name="languages[${i}][read]">
+      </td>
+      <td>
+        <input type="checkbox" name="languages[${i}][write]">
+      </td>
+      <td>
+        <input type="radio" name="motherTongue" value="${i}">
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    // Bind autosave safely
+    tr.querySelectorAll("input").forEach(el => {
+      el.addEventListener("input", window.debouncedSaveDraft);
+      el.addEventListener("change", window.debouncedSaveDraft);
+    });
   }
 }
 
-function addFixedLanguageRow(name) {
-  const tbody = document.querySelector("#languageTable tbody");
-  const index = tbody.querySelectorAll("tr").length;
-
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td>
-      <input type="text" name="languages[${index}][name]" value="${name}">
-    </td>
-    <td><input type="checkbox" name="languages[${index}][speak]"></td>
-    <td><input type="checkbox" name="languages[${index}][read]"></td>
-    <td><input type="checkbox" name="languages[${index}][write]"></td>
-    <td><input type="radio" name="motherTongue" value="${index}"></td>
-  `;
-  tbody.appendChild(tr);
-}
 
 
 function restoreFormData(data) {
@@ -602,6 +622,12 @@ function ensureVisibleError(step) {
   }
 }
 
+document.addEventListener("change", e => {
+  if (e.target.closest("#familyTableBody")) {
+    fillMediclaimFamilyDetails();
+  }
+});
+
 function fillMediclaimFamilyDetails() {
   const tbody = document.getElementById("mediclaimFamilyBody");
   if (!tbody) return;
@@ -614,7 +640,12 @@ function fillMediclaimFamilyDetails() {
   rows.forEach(row => {
     const relation = row.querySelector("select[name*='relationship']")?.value || "";
     const name = row.querySelector("input[name*='name']")?.value || "";
-    const dob = row.querySelector("input[name*='dob']")?.value || "";
+    let dob = row.querySelector("input[name*='dob']")?.value || "";
+
+    if (dob) {
+      const [year, month, day] = dob.split("-");
+      dob = `${day}/${month}/${year}`;
+    }
 
     if (!relation || !name) return;
 
@@ -784,6 +815,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 
+  document.getElementById("addEducationBtn")
+    ?.addEventListener("click", () => {
+      addEducationRow({});
+      debouncedSaveDraft();
+    });
+
   let currentStep = 0;
   let isSubmitting = false;
 
@@ -792,115 +829,123 @@ document.addEventListener("DOMContentLoaded", () => {
   const formStatus = sessionStorage.getItem("formStatus");
 
 
-  function addEducationRow(data = null, showDelete = true) {
-    const tbody = document.getElementById("educationTableBody");
-    const tr = document.createElement("tr");
-    tr.classList.add("education-row");
+  function addEducationRow(data = {}) {
+    const container = document.getElementById("extraGraduations");
 
-    tr.innerHTML = `
-    <td><input type="text" name="collegeName" value="${data?.college || ""}"></td>
-    <td><input type="text" name="board" value="${data?.board || ""}"></td>
-    <td><input type="text" name="degree" value="${data?.degree || ""}"></td>
-    <td><input type="text" name="stream" value="${data?.stream || ""}"></td>
-    <td><input type="text" name="joiningYear" value="${data?.joinYear || ""}"></td>
-    <td><input type="text" name="leavingYear" value="${data?.leaveYear || ""}"></td>
-    <td><input type="number" name="percentage" value="${data?.aggregate || ""}"></td>
-    ${showDelete ? `<td><button type="button" class="btn-delete">Delete</button></td>` : ""}
+    const table = document.createElement("table");
+    table.classList.add("education-table", "extra-grad");
+
+    table.innerHTML = `
+    <tbody>
+      <tr>
+        <td><input type="text" name="grad_college[]" value="${data.college || ""}"></td>
+        <td><input type="text" name="grad_board[]" value="${data.board || ""}"></td>
+        <td><input type="text" name="grad_degree[]" value="${data.degree || ""}"></td>
+        <td><input type="text" name="grad_stream[]" value="${data.stream || ""}"></td>
+        <td><input type="number" name="grad_joining[]" value="${data.joining || ""}"></td>
+        <td><input type="number" name="grad_leaving[]" value="${data.leaving || ""}"></td>
+        <td><input type="number" name="grad_aggregate[]" value="${data.aggregate || ""}"></td>
+        <td>
+          <button type="button" class="deleteRow">Delete</button>
+        </td>
+      </tr>
+    </tbody>
   `;
 
-    // Input restrictions
-    allowOnlyAlphabets(tr.querySelector("[name='collegeName']"));
-    allowOnlyAlphabets(tr.querySelector("[name='board']"));
-    allowOnlyAlphabets(tr.querySelector("[name='degree']"));
-    allowOnlyAlphabets(tr.querySelector("[name='stream']"));
-    allowOnlyYear(tr.querySelector("[name='joiningYear']"));
-    allowOnlyYear(tr.querySelector("[name='leavingYear']"));
+    table.querySelector(".deleteRow").addEventListener("click", function () {
+      table.remove();
+    });
 
-    if (showDelete) {
-      tr.querySelector(".btn-delete").onclick = () => {
-        tr.remove();
-        debouncedSaveDraft();
-      };
-    }
-
-    tbody.appendChild(tr);
+    container.appendChild(table);
   }
 
 
   function getEducationRowsData() {
     const rows = [];
-    document.querySelectorAll("#educationTableBody tr").forEach(tr => {
+
+    // First fixed graduation row
+    const firstGrad = document.querySelector(".graduation-wrapper table tbody tr");
+    if (firstGrad) {
+      const inputs = firstGrad.querySelectorAll("input");
+      rows.push({
+        college: inputs[0].value,
+        board: inputs[1].value,
+        degree: inputs[2].value,
+        stream: inputs[3].value,
+        joining: inputs[4].value,
+        leaving: inputs[5].value,
+        aggregate: inputs[6].value
+      });
+    }
+
+    // Extra graduation rows
+    document.querySelectorAll("#extraGraduations table tbody tr").forEach(tr => {
       const inputs = tr.querySelectorAll("input");
       rows.push({
         college: inputs[0].value,
         board: inputs[1].value,
         degree: inputs[2].value,
         stream: inputs[3].value,
-        joinYear: inputs[4].value,
-        leaveYear: inputs[5].value,
+        joining: inputs[4].value,
+        leaving: inputs[5].value,
         aggregate: inputs[6].value
       });
     });
+
     return rows;
   }
   // Old saveEducationRows (localStorage) removed
 
   window.restoreEducationRows = function (saved = []) {
-    const tbody = document.getElementById("educationTableBody");
-    if (!tbody) return;
+    if (!Array.isArray(saved) || saved.length === 0) return;
 
-    tbody.innerHTML = "";
-
-    if (!Array.isArray(saved) || saved.length === 0) {
-      setupEducationTable();
-      return;
+    // Restore first row
+    const firstGrad = document.querySelector(".graduation-wrapper table tbody tr");
+    if (firstGrad && saved[0]) {
+      const inputs = firstGrad.querySelectorAll("input");
+      inputs[0].value = saved[0].college || "";
+      inputs[1].value = saved[0].board || "";
+      inputs[2].value = saved[0].degree || "";
+      inputs[3].value = saved[0].stream || "";
+      inputs[4].value = saved[0].joining || "";
+      inputs[5].value = saved[0].leaving || "";
+      inputs[6].value = saved[0].aggregate || "";
     }
 
-    saved.forEach((row, index) => {
-      // First 3 rows = fixed
-      if (index < 3) {
-        addEducationRow(row, false);
-      } else {
-        addEducationRow(row, true);
-      }
-    });
-
-    setTimeout(() => {
-      document
-        .querySelectorAll("#educationTableBody input")
-        .forEach(el => {
-          el.addEventListener("input", window.debouncedSaveDraft);
-          el.addEventListener("change", window.debouncedSaveDraft);
-        });
-    }, 0);
+    // Restore extra rows
+    for (let i = 1; i < saved.length; i++) {
+      addEducationRow(saved[i]);
+    }
   };
 
 
-  function setupEducationTable() {
-    const tbody = document.getElementById("educationTableBody");
-    if (!tbody) return;
+  // function setupEducationTable() {
+  //   const tbody = document.getElementById("educationTableBody");
+  //   if (!tbody) return;
 
-    tbody.innerHTML = "";
+  //   tbody.innerHTML = "";
 
-    // ✅ Add 3 fixed rows initially
-    addEducationRow(null, false); // Graduation
-    addEducationRow(null, false); // Intermediate
-    addEducationRow(null, false); // Schooling
+  //   addEducationRow(null, false); 
+  //   addEducationRow(null, false); 
+  //   addEducationRow(null, false);
 
-    const addBtn = document.getElementById("addEducationBtn");
-    addBtn?.addEventListener("click", () => {
-      addEducationRow(null, true);
-      debouncedSaveDraft();
-    });
-  }
+  //   const addBtn = document.getElementById("addEducationBtn");
+  //   addBtn?.addEventListener("click", () => {
+  //     addEducationRow(null, true);
+  //     debouncedSaveDraft();
+  //   });
+  // }
 
-  function removeRow(btn) {
-    btn.closest("tr").remove();
-    debouncedSaveDraft();
-  }
+  // function removeRow(btn) {
+  //   btn.closest("tr").remove();
+  //   debouncedSaveDraft();
+  // }
 
   document.addEventListener("input", e => {
-    if (e.target.closest("#educationTableBody")) {
+    if (
+      e.target.closest(".graduation-wrapper") ||
+      e.target.closest("#extraGraduations")
+    ) {
       debouncedSaveDraft();
     }
   });
@@ -1063,7 +1108,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <input type="checkbox" name="languages[${index}][write]">
     </td>
     <td>
-      <input type="radio" name="motherTongue">
+      <input type="radio" name="motherTongue" value="${index}">
     </td>
   `;
 
@@ -1079,42 +1124,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Global validateStep3Languages function with silent parameter support
   function validateStep3Languages(silent = false) {
-    const checked = document.querySelectorAll(
-      '#languageTable input[type="checkbox"]:checked'
+    let ok = true;
+
+    const rows = document.querySelectorAll("#languageTable tbody tr");
+    const motherTongues = document.querySelectorAll(
+      'input[name="motherTongue"]:checked'
     );
 
-    const manualInputs = document.querySelectorAll(
-      '#languageTable input[type="text"][name*="name"]'
-    );
-
-    const error = document.getElementById("languageError");
-
-    let hasManualValue = false;
-    manualInputs.forEach(input => {
-      if (input.value.trim() !== "") hasManualValue = true;
-    });
-
-    if (checked.length === 0 && !hasManualValue) {
+    // ✅ Exactly ONE mother tongue required
+    if (motherTongues.length !== 1) {
       if (!silent) {
-        if (error) error.style.display = "block";
-
-        const first = document.querySelector(
-          '#languageTable input[type="checkbox"], #languageTable input[type="text"][name*="name"]'
-        );
-        if (first) {
-          first.classList.add("error");
-          first.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        alert("Select exactly one Mother Tongue");
       }
-      return false;
+      ok = false;
     }
 
-    if (error) error.style.display = "none";
-    document
-      .querySelectorAll('#languageSection .error')
-      .forEach(e => e.classList.remove("error"));
+    rows.forEach(row => {
+      const nameInput = row.querySelector("input[name*='[name]']");
+      const speak = row.querySelector("input[name*='[speak]']");
+      const read = row.querySelector("input[name*='[read]']");
+      const write = row.querySelector("input[name*='[write]']");
 
-    return true;
+      const name = nameInput?.value.trim();
+      const hasSkill = speak?.checked || read?.checked || write?.checked;
+
+      // 🚫 Skip completely empty row
+      if (!name && !hasSkill) {
+        return;
+      }
+
+      // ❌ Name missing
+      if (!name) {
+        showError(nameInput, "Language name required", silent);
+        ok = false;
+      }
+
+      // ❌ Skill missing
+      if (!hasSkill) {
+        showError(nameInput, "Select at least one skill", silent);
+        ok = false;
+      }
+    });
+
+    return ok;
   }
 
   // YEARS
@@ -1788,6 +1840,13 @@ document.addEventListener("DOMContentLoaded", () => {
         ok = false;
       }
 
+      const incomeInput = tr.querySelector("input[name*='income']");
+      incomeInput.addEventListener("input", e => {
+        let v = e.target.value.replace(/\D/g, "");
+        if (v.length > 6) v = v.slice(0, 6);
+        e.target.value = v;
+      });
+
       // Income required
       if (!income || income.value === "") {
         showError(income, "Income is required", silent);
@@ -1798,8 +1857,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ok = false;
       }
 
-      if (dep?.value === "Yes" && Number(income?.value) > 0) {
-        showError(income, "Dependent income must be 0", silent);
+      if (income.value && income.value.length > 6) {
+        showError(income, "Maximum 6 digits allowed", silent);
         ok = false;
       }
 
@@ -1858,6 +1917,16 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(div);
   }
 
+  // function restoreLanguages(savedLanguages) {
+  //   const tbody = document.querySelector("#languageTable tbody");
+  //   tbody.innerHTML = "";
+  //   addLanguageRow("English", false);
+  //   addLanguageRow("Hindi", false);
+  //   savedLanguages.forEach(lang => {
+  //     addLanguageRow(lang.name, true, lang);
+  //   });
+  // }
+
   function validateStep3(silent = false) {
     const step = steps[2];
     if (!step) return true; // defensive check
@@ -1865,7 +1934,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!silent) clearStepErrors(step);
 
     let ok = true;
-    const rows = step.querySelectorAll(".education-row");
+    const rows = document.querySelectorAll(
+      ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
+    );
 
     if (!rows.length) {
       showStepError(step, "Add at least one education detail", silent);
@@ -1888,20 +1959,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const gradRow = rows[0];
     if (gradRow) {
-      const gradLeave = gradRow.querySelector("input[name='leavingYear']");
-      if (isYear(gradLeave.value)) {
+      const gradLeave = gradRow.querySelector("input[name='grad_leaving[]']");
+      if (gradLeave && isYear(gradLeave.value)) {
         graduationLeavingYear = +gradLeave.value;
       }
     }
 
     rows.forEach((row, index) => {
-      const college = row.querySelector("input[name='collegeName']");
-      const board = row.querySelector("input[name='board']");
-      const degree = row.querySelector("input[name='degree']");
-      const stream = row.querySelector("input[name='stream']");
-      const joinYear = row.querySelector("input[name='joiningYear']");
-      const leaveYear = row.querySelector("input[name='leavingYear']");
-      const percent = row.querySelector("input[name='percentage']");
+      const college = row.querySelector("input[name='grad_college[]']");
+      const board = row.querySelector("input[name='grad_board[]']");
+      const degree = row.querySelector("input[name='grad_degree[]']");
+      const stream = row.querySelector("input[name='grad_stream[]']");
+      const joinYear = row.querySelector("input[name='grad_joining[]']");
+      const leaveYear = row.querySelector("input[name='grad_leaving[]']");
+      const percent = row.querySelector("input[name='grad_aggregate[]']");
 
 
       /* ---------- Prevent Completely Blank Row ---------- */
@@ -1941,14 +2012,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ✅ Stream (required only for Graduation - index 0)
       // ✅ Stream (required for all rows)
-      if (!stream.value.trim()) {
-        showError(stream, "Required", silent);
-        ok = false;
-      } else if (!isAlphaOnly(stream.value)) {
-        showError(stream, "Alphabets only", silent);
-        ok = false;
+      // Stream required for all rows EXCEPT schooling (index 2)
+      // Stream required only if degree is NOT "Schooling"
+      if (degree.value.trim().toLowerCase() !== "schooling") {
+        if (!stream.value.trim()) {
+          showError(stream, "Required", silent);
+          ok = false;
+        } else if (!isAlphaOnly(stream.value)) {
+          showError(stream, "Alphabets only", silent);
+          ok = false;
+        }
       }
-
 
       /* ---------- Year Sequencing with Graduation Awareness ---------- */
       if (isYear(joinYear.value) && isYear(leaveYear.value)) {
@@ -2097,11 +2171,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const motherTongueSelected = document.querySelector(
       "#languageTable input[name='motherTongue']:checked"
     );
-    if (!motherTongueSelected) {
-      const radioGroup = document.querySelector("#languageTable");
-      showError(radioGroup, "Select mother tongue", silent);
-      ok = false;
-    }
+    // if (!motherTongueSelected) {
+    //   const radioGroup = document.querySelector("#languageTable");
+    //   showError(radioGroup, "Select mother tongue", silent);
+    //   ok = false;
+    // }
 
 
     const strengths = document.getElementById("strengths");

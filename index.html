@@ -333,7 +333,7 @@
 
                 <td>
                   <div class="form-field">
-                    <input type="number" name="family[0][income]" placeholder="Monthly Income" min="0" required>
+                    <input type="number" name="family[${index}][income]" min="0" max="999999">
                   </div>
                 </td>
               </tr>
@@ -441,10 +441,7 @@
             </table>
 
             <br>
-
-            <button type="button" id="addEducationBtn" class="btn-add">
-              Add Education
-            </button>
+            <button type="button" id="addEducationBtn">Add Education</button>
           </div>
 
           <hr>
@@ -571,10 +568,10 @@
               <textarea id="strengths" name="strengths" placeholder="List three of your major strengths "></textarea>
             </div>
             <div class="form-field">
-              <textarea id="weaknesses" name="Weaknesses" placeholder="List your major weaknesses "></textarea>
+              <textarea id="Weaknesses" name="Weaknesses" placeholder="List your major weaknesses "></textarea>
             </div>
             <div class="form-field">
-              <textarea id="values" name="Values"
+              <textarea id="Values" name="Values"
                 placeholder="Mention three things/ concepts/ practices/ ideas etc. that you value most in your life. "></textarea>
             </div>
           </div>
