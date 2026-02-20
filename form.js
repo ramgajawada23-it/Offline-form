@@ -456,6 +456,14 @@ window.addFamilyRow = () => {
     `;
   tbody.appendChild(tr);
 
+  // ✅ Limit income to 6 digits (CORRECT PLACE)
+  const incomeInput = tr.querySelector("input[name*='income']");
+  incomeInput.addEventListener("input", e => {
+    let v = e.target.value.replace(/\D/g, "");
+    if (v.length > 6) v = v.slice(0, 6);
+    e.target.value = v;
+  });
+
   // ✅ THIS WAS MISSING
   const rel = tr.querySelector("select[name*='relationship']");
   rel.addEventListener("change", () => {
@@ -792,7 +800,7 @@ document.addEventListener("DOMContentLoaded", () => {
   (async function restoreDraftFlow() {
     try {
       await openDB();
-      setupEducationTable();
+      // setupEducationTable();
       // 1️⃣ Try server first
       serverDraft = await loadDraft(loggedInMobile);
 
@@ -1840,27 +1848,21 @@ document.addEventListener("DOMContentLoaded", () => {
         ok = false;
       }
 
-      const incomeInput = tr.querySelector("input[name*='income']");
-      incomeInput.addEventListener("input", e => {
-        let v = e.target.value.replace(/\D/g, "");
-        if (v.length > 6) v = v.slice(0, 6);
-        e.target.value = v;
-      });
 
-      // Income required
       if (!income || income.value === "") {
         showError(income, "Income is required", silent);
         ok = false;
       }
+
       if (!dep?.value) {
         showError(dep, "Dependent status required", silent);
         ok = false;
       }
 
-      if (income.value && income.value.length > 6) {
-        showError(income, "Maximum 6 digits allowed", silent);
-        ok = false;
-      }
+      // if (income.value && income.value.length > 6) {
+      //   showError(income, "Maximum 6 digits allowed", silent);
+      //   ok = false;
+      // }
 
       if (income && Number(income.value) < 0) {
         showError(income, "Income cannot be negative", silent);
