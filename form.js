@@ -2941,6 +2941,6 @@ function addEducationRow(data = {}) {
       }
     }
   });
-  updateUI();
+  updateUI(); 
   updateNextVisualState();
 });
