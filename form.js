@@ -630,7 +630,9 @@ function ensureVisibleError(step) {
   }
 }
 
-document.addEventListener("change", e => {
+const candidateForm = document.getElementById("candidateForm");
+
+candidateForm?.addEventListener("change", e => {
   if (e.target.closest("#familyTableBody")) {
     fillMediclaimFamilyDetails();
   }
@@ -692,13 +694,13 @@ function fillMediclaimFamilyDetails() {
 }
 
 
-document.addEventListener("change", e => {
+candidateForm?.addEventListener("change", e => {
   if (!e.target.matches("select[name*='relationship']")) return;
 
   if (e.target.value === "Spouse") {
-    const spouses = [...document.querySelectorAll(
-      "select[name*='relationship']"
-    )].filter(s => s.value === "Spouse");
+    const spouses = [
+      ...document.querySelectorAll("select[name*='relationship']")
+    ].filter(s => s.value === "Spouse");
 
     if (spouses.length > 1) {
       alert("Only one spouse is allowed");
@@ -780,6 +782,53 @@ function showError(el, msg, silent = false) {
   el.after(s);
 }
 
+// Global validateStep3Languages function with silent parameter support
+function validateStep3Languages(silent = false) {
+  let ok = true;
+
+  const rows = document.querySelectorAll("#languageTable tbody tr");
+  const motherTongues = document.querySelectorAll(
+    'input[name="motherTongue"]:checked'
+  );
+
+  // ✅ Exactly ONE mother tongue required
+  if (motherTongues.length !== 1) {
+    if (!silent) {
+      alert("Select exactly one Mother Tongue");
+    }
+    ok = false;
+  }
+
+  rows.forEach(row => {
+    const nameInput = row.querySelector("input[name*='[name]']");
+    const speak = row.querySelector("input[name*='[speak]']");
+    const read = row.querySelector("input[name*='[read]']");
+    const write = row.querySelector("input[name*='[write]']");
+
+    const name = nameInput?.value.trim();
+    const hasSkill = speak?.checked || read?.checked || write?.checked;
+
+    // 🚫 Skip completely empty row
+    if (!name && !hasSkill) {
+      return;
+    }
+
+    // ❌ Name missing
+    if (!name) {
+      showError(nameInput, "Language name required", silent);
+      ok = false;
+    }
+
+    // ❌ Skill missing
+    if (!hasSkill) {
+      showError(nameInput, "Select at least one skill", silent);
+      ok = false;
+    }
+  });
+
+  return ok;
+}
+
 /* =========================================================
   MAIN
 ========================================================= */
@@ -838,34 +887,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   function addEducationRow(data = {}) {
-    const container = document.getElementById("extraGraduations");
+    const tbody =
+      document.querySelector("#extraGraduations table tbody") ||
+      document.querySelector(".graduation-wrapper table tbody");
+    if (!tbody) return;
 
-    const table = document.createElement("table");
-    table.classList.add("education-table", "extra-grad");
-
-    table.innerHTML = `
-    <tbody>
-      <tr>
-        <td><input type="text" name="grad_college[]" value="${data.college || ""}"></td>
-        <td><input type="text" name="grad_board[]" value="${data.board || ""}"></td>
-        <td><input type="text" name="grad_degree[]" value="${data.degree || ""}"></td>
-        <td><input type="text" name="grad_stream[]" value="${data.stream || ""}"></td>
-        <td><input type="number" name="grad_joining[]" value="${data.joining || ""}"></td>
-        <td><input type="number" name="grad_leaving[]" value="${data.leaving || ""}"></td>
-        <td><input type="number" name="grad_aggregate[]" value="${data.aggregate || ""}"></td>
-        <td>
-          <button type="button" class="deleteRow">Delete</button>
-        </td>
-      </tr>
-    </tbody>
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+    <td><input type="text" name="grad_college[]" value="${data.college || ""}"></td>
+    <td><input type="text" name="grad_board[]" value="${data.board || ""}"></td>
+    <td><input type="text" name="grad_degree[]" value="${data.degree || ""}"></td>
+    <td><input type="text" name="grad_stream[]" value="${data.stream || ""}"></td>
+    <td><input type="number" name="grad_joining[]" value="${data.joining || ""}"></td>
+    <td><input type="number" name="grad_leaving[]" value="${data.leaving || ""}"></td>
+    <td><input type="number" name="grad_aggregate[]" value="${data.aggregate || ""}"></td>
+    <td>
+      <button type="button" class="deleteRow">Delete</button>
+    </td>
   `;
 
-    table.querySelector(".deleteRow").addEventListener("click", function () {
-      table.remove();
+    tr.querySelector(".deleteRow").addEventListener("click", function () {
+      const totalRows = document.querySelectorAll(
+        ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
+      ).length;
+
+      if (totalRows <= 1) {
+        alert("At least one education record is required");
+        return;
+      }
+
+      tr.remove();
+      debouncedSaveDraft();
     });
 
-    container.appendChild(table);
+    tbody.appendChild(tr);
   }
+
 
 
   function getEducationRowsData() {
@@ -949,14 +1006,7 @@ document.addEventListener("DOMContentLoaded", () => {
   //   debouncedSaveDraft();
   // }
 
-  document.addEventListener("input", e => {
-    if (
-      e.target.closest(".graduation-wrapper") ||
-      e.target.closest("#extraGraduations")
-    ) {
-      debouncedSaveDraft();
-    }
-  });
+
 
   ["loanAmount", "loanBalance", "loanSalary"].forEach(id => {
     const el = document.getElementById(id);
@@ -1074,19 +1124,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("motherName")
     ?.addEventListener("input", syncAllFamilyRows);
 
-  document.addEventListener("input", e => {
-    const el = e.target;
 
-    if (
-      el.placeholder === "Joining Year" ||
-      el.placeholder === "Leaving Year"
-    ) {
-      const yearPattern = /^\d{4}$/;
-      if (yearPattern.test(el.value)) {
-        clearError(el); // ✅ remove error + text
-      }
-    }
-  });
 
   document.querySelectorAll("input[name='gender']").forEach(radio => {
     radio.addEventListener("change", () => {
@@ -1130,53 +1168,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   });
 
-  // Global validateStep3Languages function with silent parameter support
-  function validateStep3Languages(silent = false) {
-    let ok = true;
-
-    const rows = document.querySelectorAll("#languageTable tbody tr");
-    const motherTongues = document.querySelectorAll(
-      'input[name="motherTongue"]:checked'
-    );
-
-    // ✅ Exactly ONE mother tongue required
-    if (motherTongues.length !== 1) {
-      if (!silent) {
-        alert("Select exactly one Mother Tongue");
-      }
-      ok = false;
-    }
-
-    rows.forEach(row => {
-      const nameInput = row.querySelector("input[name*='[name]']");
-      const speak = row.querySelector("input[name*='[speak]']");
-      const read = row.querySelector("input[name*='[read]']");
-      const write = row.querySelector("input[name*='[write]']");
-
-      const name = nameInput?.value.trim();
-      const hasSkill = speak?.checked || read?.checked || write?.checked;
-
-      // 🚫 Skip completely empty row
-      if (!name && !hasSkill) {
-        return;
-      }
-
-      // ❌ Name missing
-      if (!name) {
-        showError(nameInput, "Language name required", silent);
-        ok = false;
-      }
-
-      // ❌ Skill missing
-      if (!hasSkill) {
-        showError(nameInput, "Select at least one skill", silent);
-        ok = false;
-      }
-    });
-
-    return ok;
-  }
-
   // YEARS
   // document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
 
@@ -1192,9 +1183,29 @@ document.addEventListener("DOMContentLoaded", () => {
   // toggleExperienceDependentSections();
 
   ["input", "change"].forEach(evt => {
-    document
-      .querySelector("#candidateForm")
-      ?.addEventListener(evt, debouncedSaveDraft);
+    mainForm.addEventListener(evt, debouncedSaveDraft);
+  });
+
+  mainForm.addEventListener("input", e => {
+    if (
+      e.target.closest(".graduation-wrapper") ||
+      e.target.closest("#extraGraduations")
+    ) {
+      debouncedSaveDraft();
+    }
+  });
+
+  mainForm.addEventListener("input", e => {
+    const el = e.target;
+    if (
+      el.placeholder === "Joining Year" ||
+      el.placeholder === "Leaving Year"
+    ) {
+      const yearPattern = /^\d{4}$/;
+      if (yearPattern.test(el.value)) {
+        clearError(el); // ✅ remove error + text
+      }
+    }
   });
 
   const newFormBtn = document.getElementById("newFormBtn");
@@ -1735,7 +1746,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    if (!realBankAccount || realBankAccount.length < 8 || realBankAccount.length > 18) {
+    if (!realBankAccount || !/^\d{8,18}$/.test(realBankAccount)) {
       showError(bankAccInput, "Required Account number(8-18 digits)", silent);
       ok = false;
     }
@@ -1908,16 +1919,16 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================================================
     STEP 3 – EDUCATION
   ========================================================= */
-  function addLanguage() {
-    const container = document.getElementById("extraLanguages");
-    const div = document.createElement("div");
-    div.className = "language-item";
-    div.innerHTML = `
-    <input type="text" placeholder="Enter language" class="language-input" required>
-    <button type="button" onclick="this.parentElement.remove()">Remove</button>
-  `;
-    container.appendChild(div);
-  }
+  // function addLanguage() {
+  //   const container = document.getElementById("extraLanguages");
+  //   const div = document.createElement("div");
+  //   div.className = "language-item";
+  //   div.innerHTML = `
+  //   <input type="text" placeholder="Enter language" class="language-input" required>
+  //   <button type="button" onclick="this.parentElement.remove()">Remove</button>
+  // `;
+  //   container.appendChild(div);
+  // }
 
   // function restoreLanguages(savedLanguages) {
   //   const tbody = document.querySelector("#languageTable tbody");
@@ -1955,13 +1966,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!validateStep3Languages(silent)) {
       ok = false;
+
+      if (!silent) {
+        showSummaryError(step, "Please correct language details");
+        focusFirstError(step);
+      }
     }
 
+    const graduationRow = document.querySelector(".graduation-wrapper table tbody tr");
     let graduationLeavingYear = null;
 
-    const gradRow = rows[0];
-    if (gradRow) {
-      const gradLeave = gradRow.querySelector("input[name='grad_leaving[]']");
+    if (graduationRow) {
+      const gradLeave = graduationRow.querySelector("input[name='grad_leaving[]']");
       if (gradLeave && isYear(gradLeave.value)) {
         graduationLeavingYear = +gradLeave.value;
       }
@@ -2012,11 +2028,14 @@ document.addEventListener("DOMContentLoaded", () => {
         ok = false;
       }
 
-      // ✅ Stream (required only for Graduation - index 0)
-      // ✅ Stream (required for all rows)
-      // Stream required for all rows EXCEPT schooling (index 2)
-      // Stream required only if degree is NOT "Schooling"
-      if (degree.value.trim().toLowerCase() !== "schooling") {
+      const degreeName = degree.value.toLowerCase();
+      const isSchooling = degreeName.includes("schooling") ||
+        degreeName.includes("10th") ||
+        degreeName.includes("12th") ||
+        degreeName.includes("ssc") ||
+        degreeName.includes("hsc");
+
+      if (!isSchooling) {
         if (!stream.value.trim()) {
           showError(stream, "Required", silent);
           ok = false;
@@ -2026,7 +2045,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      /* ---------- Year Sequencing with Graduation Awareness ---------- */
+      const isGraduation =
+        row.classList.contains("main-graduation-row") ||
+        /^(b\.?|bachelor)/.test(degreeName) ||
+        degreeName.includes("graduation");
+
+      const isPreGrad = degreeName.includes("10th") ||
+        degreeName.includes("12th") ||
+        degreeName.includes("ssc") ||
+        degreeName.includes("hsc") ||
+        degreeName.includes("schooling");
+
+      const isPostGrad = !isGraduation && !isPreGrad;
+
       if (isYear(joinYear.value) && isYear(leaveYear.value)) {
 
         if (+leaveYear.value <= +joinYear.value) {
@@ -2034,31 +2065,29 @@ document.addEventListener("DOMContentLoaded", () => {
           ok = false;
         }
 
-        // Graduation row (index 0)
-        if (index === 0) {
+        // Graduation row
+        if (isGraduation) {
           if (+leaveYear.value - +joinYear.value > 6) {
             showError(leaveYear, "Graduation duration cannot exceed 6 years", silent);
             ok = false;
           }
         }
 
-        // Pre-graduation rows (1 & 2)
-        if ((index === 1 || index === 2) && graduationLeavingYear !== null) {
+        // Pre-graduation rows
+        if (isPreGrad && graduationLeavingYear !== null) {
           if (+leaveYear.value >= graduationLeavingYear) {
             showError(leaveYear, "Must be completed before Graduation", silent);
             ok = false;
           }
         }
 
-        // Post-graduation rows (3+)
-        if (index >= 3 && graduationLeavingYear !== null) {
+        // Post-graduation rows
+        if (isPostGrad && graduationLeavingYear !== null) {
           if (+joinYear.value <= graduationLeavingYear) {
             showError(joinYear, "Post-graduation must start after Graduation", silent);
             ok = false;
           }
         }
-
-
       }
 
       /* ---------- Year Validation ---------- */
@@ -2098,8 +2127,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (percent.value === "" || isNaN(percentValue)) {
         showError(percent, "Required", silent);
         ok = false;
-      } else if (percentValue < 35 || percentValue > 100) {
-        showError(percent, "Percentage must be between 35 and 100", silent);
+      } else if (percentValue < 0 || percentValue > 100) {
+        showError(percent, "Enter valid percentage (0-100)", silent);
         ok = false;
       }
 
@@ -2116,7 +2145,6 @@ document.addEventListener("DOMContentLoaded", () => {
           degreeSet.add(degreeKey);
         }
       }
-
     });
 
     if (!member || !member.value) {
@@ -2129,28 +2157,10 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-
-    // ===== Conditional Skill Textareas (Yes → Details Required) =====
-    // Pattern: <select> immediately followed by a <textarea>
-
-    // const conditionalPairs = [
-    //   {
-    //     question: "Member of Professional Body / Society?",
-    //     selectIndex: 0
-    //   },
-    //   {
-    //     question: "Special Honors / Scholarships?",
-    //     selectIndex: 1
-    //   }
-    // ];
-
-
     const literary = document.getElementById("activityLiterary");
     const sports = document.getElementById("activitySports");
     const hobbies = document.getElementById("activityHobbies");
     const extraError = document.getElementById("extraCurricularError");
-
-
 
     if (
       !literary?.value.trim() &&
@@ -2158,27 +2168,12 @@ document.addEventListener("DOMContentLoaded", () => {
       !hobbies?.value.trim()
     ) {
       if (extraError) extraError.style.display = "block";
-
       const target = literary || sports || hobbies;
-      if (target) {
-        showError(target, "Enter at least one activity", silent);
-      }
-
+      if (target) showError(target, "Enter at least one activity", silent);
       ok = false;
-    }
-    else {
+    } else {
       if (extraError) extraError.style.display = "none";
     }
-
-    const motherTongueSelected = document.querySelector(
-      "#languageTable input[name='motherTongue']:checked"
-    );
-    // if (!motherTongueSelected) {
-    //   const radioGroup = document.querySelector("#languageTable");
-    //   showError(radioGroup, "Select mother tongue", silent);
-    //   ok = false;
-    // }
-
 
     const strengths = document.getElementById("strengths");
     const weaknesses = document.getElementById("Weaknesses");
@@ -2188,43 +2183,26 @@ document.addEventListener("DOMContentLoaded", () => {
       showError(strengths, "Strengths are required", silent);
       ok = false;
     }
-
     if (!weaknesses || isBlank(weaknesses.value)) {
       showError(weaknesses, "Weaknesses are required", silent);
       ok = false;
     }
-
     if (!values || isBlank(values.value)) {
       showError(values, "Values are required", silent);
       ok = false;
     }
 
-
-    // Get all selects in Step-3
     step.querySelectorAll("select + textarea").forEach(textarea => {
       const select = textarea.previousElementSibling;
-
-      if (select.value.toLowerCase() === "yes" && isBlank(textarea.value)) {
-        showError(
-          textarea,
-          "Details are required when 'Yes' is selected",
-          silent
-        );
+      if (select?.value.toLowerCase() === "yes" && isBlank(textarea.value)) {
+        showError(textarea, "Details are required when 'Yes' is selected", silent);
         ok = false;
       }
     });
 
     if (!ok && !silent) {
-      if (step.querySelector(".error")) {
-        showSummaryError(
-          step,
-          "Please correct the highlighted errors before continuing"
-        );
-        focusFirstError(step);
-      } else {
-        console.warn("Step‑3 invalid but no field marked error");
-        shakeCurrentStep();
-      }
+      showSummaryError(step, "Please correct the highlighted errors before continuing");
+      focusFirstError(step);
     }
 
     return ok;
@@ -2832,7 +2810,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* ✅ Clear field error immediately when user corrects it */
-  document.addEventListener("input", e => {
+  mainForm.addEventListener("input", e => {
     const el = e.target;
     if (!el.classList.contains("error")) return;
 
