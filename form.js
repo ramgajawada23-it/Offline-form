@@ -4,6 +4,7 @@ let realPan = "";
 let realAadhaar = "";
 let realBankAccount = "";
 let isRestoring = false;
+let autosaveActivated = false;
 
 window.debouncedSaveDraft = function () {
   console.warn("debouncedSaveDraft called before initialization");
@@ -132,37 +133,32 @@ async function restoreDraftState(data) {
       restoreLanguageRows(data.fields);
     }
 
-    // 2️⃣ Delay actual field population
-    setTimeout(() => {
-      try {
-        if (data.fields) {
-          restoreFormData(data.fields);
-          restoreMaskedKYC(data.fields);
-        }
-        // 🔁 Recalculate derived / conditional fields
-        recalculateAge();
-        toggleIllnessFields();
-        toggleMaritalFields();
-        toggleExperienceDependentSections();
-        validateStep3Languages(true);
+    // 2️⃣ Restore Form Fields
+    if (data.fields) {
+      restoreFormData(data.fields);
+      restoreMaskedKYC(data.fields);
+    }
 
-        if (Array.isArray(data.educationRows)) {
-          restoreEducationRows(data.educationRows);
-        }
+    // 🔁 Recalculate derived / conditional fields
+    recalculateAge();
+    toggleIllnessFields();
+    toggleMaritalFields();
+    toggleExperienceDependentSections();
+    validateStep3Languages(true);
 
-      } finally {
-        isRestoring = false;
-      }
-    }, 50); // 🔥 use 50ms not 0
+    if (Array.isArray(data.educationRows)) {
+      restoreEducationRows(data.educationRows);
+    }
 
   } catch (err) {
     console.error("Restore failed:", err);
+  } finally {
     isRestoring = false;
   }
 }
 function toggleExperienceDependentSections() {
-  const years = Number(document.getElementById("expYears")?.value || 0);
-  const months = Number(document.getElementById("expMonths")?.value || 0);
+  const years = parseInt(document.getElementById("expYears")?.value?.trim() || "0", 10);
+  const months = parseInt(document.getElementById("expMonths")?.value?.trim() || "0", 10);
 
   const show = years > 0 || months > 0;
 
@@ -277,19 +273,17 @@ function restoreFormData(data) {
 
     const field = document.querySelector(`[name="${key}"]`);
     if (field) {
-      let target = field;
       if (field.type === "radio") {
         const matching = document.querySelector(`input[name="${key}"][value="${value}"]`);
         if (matching) {
           matching.checked = true;
-          target = matching;
         }
       } else if (field.type === "checkbox") {
         field.checked = !!value;
       } else {
         field.value = value || "";
       }
-      target.dispatchEvent(new Event("input", { bubbles: true }));
+      // 🔥 REMOVED target.dispatchEvent to prevent recursion
     }
   });
 
@@ -668,7 +662,15 @@ function showStep(index) {
 
 // Global Navigator
 function goToStep(stepIndex) {
-    showStep(stepIndex); 
+  if (
+    typeof stepIndex !== "number" ||
+    stepIndex < 0 ||
+    stepIndex >= (steps?.length || 0)
+  ) return;
+
+  if (stepIndex === currentStep) return;
+
+  showStep(stepIndex);
 }
 
 function initFamilyRow(row) {
@@ -986,7 +988,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
         goToStep(stepToRestore);
         toggleExperienceDependentSections();
-
+        activateAutosave();
         return;
       }
 
@@ -999,7 +1001,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const stepToRestore = !isNaN(localDraft.step) ? Number(localDraft.step) : 0;
         goToStep(stepToRestore);
         toggleExperienceDependentSections();
+        activateAutosave();
+        return;
       }
+
+      // 3️⃣ New Form - Just activate autosave
+      activateAutosave();
     } catch (err) {
       console.error("Draft restore failed:", err);
     }
@@ -1301,18 +1308,19 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // toggleExperienceDependentSections();
 
-  ["input", "change"].forEach(evt => {
-    mainForm.addEventListener(evt, debouncedSaveDraft);
-  });
+  function activateAutosave() {
+    if (autosaveActivated) return; // ✅ prevent duplicate binding
+    autosaveActivated = true;
 
-  mainForm.addEventListener("input", e => {
-    if (
-      e.target.closest(".graduation-wrapper") ||
-      e.target.closest("#extraGraduations")
-    ) {
-      debouncedSaveDraft();
-    }
-  });
+    ["input", "change"].forEach(evt => {
+      mainForm.addEventListener(evt, () => {
+        if (isRestoring) return;
+        debouncedSaveDraft();
+      });
+    });
+
+    console.log("✅ Autosave Activated (once)");
+  }
 
   mainForm.addEventListener("input", e => {
     const el = e.target;
@@ -1683,6 +1691,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   function validateStep1(silent = false) {
+    if (isRestoring) return true; // ✅ Skip validation during restore
     const step = steps[0];
     if (!silent) clearStepErrors(step);
     let ok = true;
@@ -1941,6 +1950,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ========================================================= */
 
   function validateStep2(silent = false) {
+    if (isRestoring) return true; // ✅ Skip
     const step = steps[1];
     if (!silent) clearStepErrors(step);
     let ok = true;
@@ -2064,6 +2074,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // }
 
 function validateStep3(silent = false) {
+  if (isRestoring) return true; // ✅ Skip
   const step = steps[2];
   if (!step) return true;
 
@@ -2149,6 +2160,99 @@ function validateStep3(silent = false) {
   });
 
   /* ======================================================
+     1.1️⃣ INTERMEDIATE VALIDATION
+  ====================================================== */
+
+  const interFields = [
+    "inter_college", "inter_board", "inter_stream",
+    "inter_joining", "inter_leaving", "inter_aggregate"
+  ];
+
+  interFields.forEach(name => {
+    const el = document.querySelector(`input[name="${name}"]`);
+    if (!el) return;
+    if (!el.value.trim()) {
+      markError(el, "Required");
+      if (!firstError) firstError = el;
+      ok = false;
+    } else {
+      // Numerical / Year specific checks
+      if (name.includes("joining") || name.includes("leaving")) {
+        if (!/^\d{4}$/.test(el.value)) {
+          markError(el, "Enter valid 4-digit year");
+          if (!firstError) firstError = el;
+          ok = false;
+        }
+      }
+      if (name.includes("aggregate")) {
+        const p = parseFloat(el.value);
+        if (isNaN(p) || p < 0 || p > 100) {
+          markError(el, "Percentage 0–100");
+          if (!firstError) firstError = el;
+          ok = false;
+        }
+      }
+    }
+  });
+
+  // Intermediate Year Comparison
+  const interJoin = document.querySelector('input[name="inter_joining"]');
+  const interLeave = document.querySelector('input[name="inter_leaving"]');
+  if (interJoin?.value && interLeave?.value) {
+    if (parseInt(interLeave.value) <= parseInt(interJoin.value)) {
+      markError(interLeave, "Leaving year must be after joining year");
+      if (!firstError) firstError = interLeave;
+      ok = false;
+    }
+  }
+
+  /* ======================================================
+     1.2️⃣ 10TH / SCHOOLING VALIDATION
+  ====================================================== */
+
+  const schoolFields = [
+    "school_name", "school_board", "school_joining",
+    "school_leaving", "school_aggregate"
+  ];
+
+  schoolFields.forEach(name => {
+    const el = document.querySelector(`input[name="${name}"]`);
+    if (!el) return;
+    if (!el.value.trim()) {
+      markError(el, "Required");
+      if (!firstError) firstError = el;
+      ok = false;
+    } else {
+      if (name.includes("joining") || name.includes("leaving")) {
+        if (!/^\d{4}$/.test(el.value)) {
+          markError(el, "Enter valid 4-digit year");
+          if (!firstError) firstError = el;
+          ok = false;
+        }
+      }
+      if (name.includes("aggregate")) {
+        const p = parseFloat(el.value);
+        if (isNaN(p) || p < 0 || p > 100) {
+          markError(el, "Percentage 0–100");
+          if (!firstError) firstError = el;
+          ok = false;
+        }
+      }
+    }
+  });
+
+  // School Year Comparison
+  const schJoin = document.querySelector('input[name="school_joining"]');
+  const schLeave = document.querySelector('input[name="school_leaving"]');
+  if (schJoin?.value && schLeave?.value) {
+    if (parseInt(schLeave.value) <= parseInt(schJoin.value)) {
+      markError(schLeave, "Leaving year must be after joining year");
+      if (!firstError) firstError = schLeave;
+      ok = false;
+    }
+  }
+
+  /* ======================================================
      2️⃣ LANGUAGE VALIDATION
   ====================================================== */
 
@@ -2232,6 +2336,7 @@ function validateStep3(silent = false) {
     STEP 4 – EXPERIENCE
   ========================================================= */
   function validateStep4(silent = false) {
+    if (isRestoring) return true; // ✅ Skip
     const step = steps[3];
     if (!silent) clearStepErrors(step);
 
@@ -2412,6 +2517,7 @@ function validateStep3(silent = false) {
 
   // ================= STEP 5 – VALIDATION =================
   function validateStep5(silent = false) {
+    if (isRestoring) return true; // ✅ Skip
     const step = steps[4];
     let ok = true;
 
@@ -2635,6 +2741,7 @@ function validateStep3(silent = false) {
   /*-----------------------Step-6--------------------------- */
   ////////////////////////////////////////
   function validateStep6(silent = false) {
+    if (isRestoring) return true; // ✅ Skip
     const step = steps[5];
 
     if (!mediclaimConsent.value) {
