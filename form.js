@@ -146,9 +146,6 @@ async function restoreDraftState(data) {
         toggleExperienceDependentSections();
         validateStep3Languages(true);
 
-        if (typeof data.step === "number") {
-          showStep(data.step);
-        }
         if (Array.isArray(data.educationRows)) {
           restoreEducationRows(data.educationRows);
         }
@@ -164,18 +161,6 @@ async function restoreDraftState(data) {
   }
 }
 
-function toggleExperienceDependentSections() {
-  const years = parseInt(document.getElementById("expYears")?.value || 0);
-  const months = parseInt(document.getElementById("expMonths")?.value || 0);
-
-  const show = years > 0 || months > 0;
-
-  const expSection = document.getElementById("experienceDetails");
-
-  if (expSection) {
-    expSection.style.display = show ? "block" : "none";
-  }
-}
 
 function restoreFamilyRows(fields) {
   const tbody = document.getElementById("familyTableBody");
@@ -602,20 +587,49 @@ function fillMediclaimEmployeeDetails() {
     if (map[key]) el.textContent = map[key]();
   });
 }
-// run when entering step‑6
+// Single source of truth for step transitions
 function showStep(index) {
-  steps.forEach((step, i) => step.classList.toggle("active", i === index));
+  if (index < 0 || index >= steps.length) return;
+  
+  currentStep = index;
 
-  // Safety check for stepperSteps
-  if (window.stepperSteps) {
-    stepperSteps.forEach((circle, i) =>
-      circle.classList.toggle("active", i <= index)
-    );
+  /* 1. Toggle Step Visibility */
+  steps.forEach((step, i) => {
+    step.classList.toggle("active", i === index);
+  });
+
+  /* 2. Update Sidebar */
+  if (sidebarItems.length > 0) {
+    sidebarItems.forEach((li, i) => {
+      li.classList.toggle("active", i === index);
+      li.classList.toggle("completed", i < index);
+    });
   }
 
-  if (index === 5) { // Step‑6
+  /* 3. Update Stepper */
+  if (stepperSteps.length > 0) {
+    stepperSteps.forEach((circle, i) => {
+      circle.classList.toggle("active", i === index);
+      circle.classList.toggle("completed", i < index);
+    });
+  }
+
+  /* 4. Update Navigation Buttons */
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const submitBtn = document.getElementById("submitBtn");
+
+  if (prevBtn) prevBtn.style.display = index === 0 ? "none" : "inline-block";
+  if (nextBtn) nextBtn.style.display = index === steps.length - 1 ? "none" : "inline-block";
+  if (submitBtn) submitBtn.style.display = index === steps.length - 1 ? "inline-block" : "none";
+
+  /* 5. Logic for specific steps */
+  if (index === 5) { // Step‑6 (Mediclaim)
     fillMediclaimEmployeeDetails();
-    fillMediclaimFamilyDetails(); // ✅ ADD THIS
+    fillMediclaimFamilyDetails();
+    if (typeof populateMediclaimStep === "function") {
+      populateMediclaimStep(collectFormData());
+    }
   }
 }
 
@@ -719,6 +733,50 @@ candidateForm?.addEventListener("change", e => {
     }
   }
 });
+
+function populateMediclaimStep(data) {
+  if (!data) return;
+
+  // ===== Header / simple bindings =====
+  document.querySelectorAll("[data-bind]").forEach(el => {
+    const key = el.dataset.bind;
+    if (key === "today") {
+      el.textContent = new Date().toLocaleDateString("en-IN");
+    } else if (key === "firstName lastName") {
+      el.textContent = `${data.firstName || ""} ${data.lastName || ""}`;
+    } else if (data[key]) {
+      el.textContent = data[key];
+    }
+  });
+
+  // ===== Family table =====
+  const tbody = document.getElementById("mediclaimFamilyBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  let i = 1;
+
+  const familyRows = Object.keys(data)
+    .filter(k => k.startsWith("family["))
+    .reduce((rows, key) => {
+      const idx = key.match(/\[(\d+)\]/)?.[1];
+      if (!rows[idx]) rows[idx] = {};
+      rows[idx][key.split("][").pop().replace("]", "")] = data[key];
+      return rows;
+    }, {});
+
+  Object.values(familyRows).forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="center">${i++}</td>
+      <td>${row.relationship || ""}</td>
+      <td>${row.gender || ""}</td>
+      <td>${row.name || ""}</td>
+      <td>${row.dob || ""}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
 function allowOnlyYear(input) {
   input.addEventListener("input", e => {
@@ -835,10 +893,32 @@ function validateStep3Languages(silent = false) {
 /* =========================================================
   MAIN
 ========================================================= */
+/* =========================================================
+  MAIN STATE & INITIALIZATION
+========================================================= */
 let steps = [];
+let stepperSteps = [];
+let sidebarItems = [];
+let currentStep = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
   steps = document.querySelectorAll(".form-step");
+  stepperSteps = document.querySelectorAll(".stepper-step");
+  sidebarItems = document.querySelectorAll(".step-menu li");
+
+  // 🔥 FORCE CLEAN INITIAL STATE
+  steps.forEach(step => step.classList.remove("active"));
+  stepperSteps.forEach(step => {
+    step.classList.remove("active");
+    step.classList.remove("completed");
+  });
+  sidebarItems.forEach(item => {
+    item.classList.remove("active");
+    item.classList.remove("completed");
+  });
+
+  // Always start from Step 0 visually
+  showStep(0);
 
   const loggedInMobile =
     sessionStorage.getItem("loggedInMobile") ||
@@ -862,6 +942,11 @@ document.addEventListener("DOMContentLoaded", () => {
           : serverDraft.formData;
 
         await restoreDraftState(parsed);
+
+        // 🔥 Step restore happens HERE (after DOM + steps ready)
+        const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
+        showStep(stepToRestore);
+
         return;
       }
 
@@ -869,6 +954,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const localDraft = await loadDraftFromDB();
       if (localDraft) {
         await restoreDraftState(localDraft);
+
+        const stepToRestore = !isNaN(localDraft.step) ? Number(localDraft.step) : 0;
+
+        showStep(stepToRestore);
       }
     } catch (err) {
       console.error("Draft restore failed:", err);
@@ -881,7 +970,6 @@ document.addEventListener("DOMContentLoaded", () => {
       debouncedSaveDraft();
     });
 
-  let currentStep = 0;
   let isSubmitting = false;
 
   window._debugCurrentStep = () => currentStep;
@@ -925,8 +1013,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.appendChild(tr);
   }
-
-
 
   function getEducationRowsData() {
     const rows = [];
@@ -1941,18 +2027,24 @@ function validateStep3(silent = false) {
   if (!step) return true;
 
   if (!silent) clearStepErrors(step);
+
   let ok = true;
+  let firstError = null;
 
   /* ======================================================
-     1️⃣ GRADUATION ROW VALIDATION
+     1️⃣ GRADUATION VALIDATION
   ====================================================== */
 
   const gradRows = document.querySelectorAll(
     ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
   );
 
-  gradRows.forEach((row, index) => {
+  if (!gradRows.length) {
+    showStepError(step, "At least one education record is required", silent);
+    return false;
+  }
 
+  gradRows.forEach((row, index) => {
     const college  = row.querySelector("input[name='grad_college[]']");
     const board    = row.querySelector("input[name='grad_board[]']");
     const degree   = row.querySelector("input[name='grad_degree[]']");
@@ -1968,40 +2060,47 @@ function validateStep3(silent = false) {
       joining, leaving, percent
     ].some(el => el && el.value.trim() !== "");
 
-    // First row mandatory OR optional row if partially filled
+    // First row mandatory OR partially filled row must be complete
     if (isFirstRow || anyFilled) {
 
       [college, board, degree, stream, joining, leaving, percent]
-      .forEach(el => {
-        if (!el || !el.value.trim()) {
-          markError(el);
-          ok = false;
-        }
-      });
+        .forEach(el => {
+          if (!el || !el.value.trim()) {
+            markError(el, "Required");
+            if (!firstError) firstError = el;
+            ok = false;
+          }
+        });
 
-      // Year validation
+      // Joining year
       if (joining?.value && !/^\d{4}$/.test(joining.value)) {
         markError(joining, "Enter valid 4-digit year");
+        if (!firstError) firstError = joining;
         ok = false;
       }
 
+      // Leaving year
       if (leaving?.value && !/^\d{4}$/.test(leaving.value)) {
         markError(leaving, "Enter valid 4-digit year");
+        if (!firstError) firstError = leaving;
         ok = false;
       }
 
+      // Year comparison
       if (joining?.value && leaving?.value) {
         if (parseInt(leaving.value) <= parseInt(joining.value)) {
           markError(leaving, "Leaving year must be after joining year");
+          if (!firstError) firstError = leaving;
           ok = false;
         }
       }
 
-      // Aggregate validation
+      // Percentage validation
       if (percent?.value) {
         const p = parseFloat(percent.value);
         if (isNaN(p) || p < 0 || p > 100) {
-          markError(percent, "Enter percentage between 0–100");
+          markError(percent, "Percentage must be 0–100");
+          if (!firstError) firstError = percent;
           ok = false;
         }
       }
@@ -2015,7 +2114,6 @@ function validateStep3(silent = false) {
   const languageRows = document.querySelectorAll("#languageTable tbody tr");
 
   languageRows.forEach(row => {
-
     const langInput = row.querySelector("input[type='text']");
     const speak = row.querySelector("input[name*='speak']");
     const read  = row.querySelector("input[name*='read']");
@@ -2023,57 +2121,57 @@ function validateStep3(silent = false) {
 
     const anySkill = speak?.checked || read?.checked || write?.checked;
 
-    // skip empty row
     if (!langInput.value.trim() && !anySkill) return;
 
     if (!langInput.value.trim()) {
-      markError(langInput, "Enter language");
+      markError(langInput, "Language required");
+      if (!firstError) firstError = langInput;
       ok = false;
     }
 
     if (!anySkill) {
       markError(langInput, "Select at least one skill");
+      if (!firstError) firstError = langInput;
       ok = false;
     }
   });
 
   /* ======================================================
-     3️⃣ MOTHER TONGUE (EXACTLY ONE)
+     3️⃣ MOTHER TONGUE VALIDATION
   ====================================================== */
 
-  const selectedMotherTongue =
-    document.querySelectorAll("input[name='motherTongue']:checked");
+  const motherChecked = document.querySelectorAll(
+    'input[name="motherTongue"]:checked'
+  );
 
-  if (selectedMotherTongue.length !== 1) {
-    document.querySelectorAll("input[name='motherTongue']")
-      .forEach(r => r.classList.add("input-error"));
+  if (motherChecked.length !== 1) {
+    document
+      .querySelectorAll('input[name="motherTongue"]')
+      .forEach(r => r.closest("td")?.classList.add("input-error"));
 
-    if (!silent) {
-      showSummaryError(step, "Select exactly one Mother Tongue");
+    if (!firstError) {
+      firstError = document.querySelector('input[name="motherTongue"]');
     }
 
     ok = false;
   }
 
   /* ======================================================
-     4️⃣ TEXTAREAS REQUIRED
-  ====================================================== */
-
-  ["strengths", "Weaknesses", "Values"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !el.value.trim()) {
-      markError(el);
-      ok = false;
-    }
-  });
-
-  /* ======================================================
      FINAL ERROR HANDLING
   ====================================================== */
 
   if (!ok && !silent) {
-    showSummaryError(step, "Please correct the highlighted errors in Step 3");
-    focusFirstError(step);
+    showSummaryError(
+      step,
+      "Please correct the highlighted errors before continuing"
+    );
+
+    if (firstError) {
+      firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+      firstError.focus();
+    } else {
+      shakeCurrentStep();
+    }
   }
 
   return ok;
@@ -2088,25 +2186,25 @@ function validateStep3(silent = false) {
     const months = Number(document.getElementById("expMonths")?.value || 0);
     const hasExperience = years > 0 || months > 0;
 
-    // Toggle UAN
+    const expSection = document.getElementById("experienceDetails");
+    const assignments = document.getElementById("assignmentsHandled");
+    const salarySection = document.getElementById("salarySection");
     const uanContainer = document.getElementById("uanContainer");
+
+    if (expSection) expSection.style.display = hasExperience ? "block" : "none";
+    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
+    if (salarySection) salarySection.style.display = hasExperience ? "block" : "none";
+
     if (uanContainer) {
       uanContainer.style.display = hasExperience ? "block" : "none";
       if (!hasExperience) {
         const uanInput = document.getElementById("uan");
         if (uanInput) {
           uanInput.value = "";
-          clearError(uanInput);
+          if (typeof clearError === "function") clearError(uanInput);
         }
       }
     }
-
-    // Toggle Employment History & Assignments
-    const empHistory = document.getElementById("employmentHistory");
-    const assignments = document.getElementById("assignmentsHandled");
-
-    if (empHistory) empHistory.style.display = hasExperience ? "block" : "none";
-    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
   }
 
   // Bind events
@@ -2183,7 +2281,7 @@ function validateStep3(silent = false) {
 
       /* ================= EMPLOYMENT HISTORY ================= */
       step
-        .querySelectorAll("#employmentHistory input, #employmentHistory textarea")
+        .querySelectorAll("#experienceDetails input, #experienceDetails textarea")
         .forEach(el => {
           if (isSkippable(el)) return;
 
@@ -2530,49 +2628,6 @@ function validateStep3(silent = false) {
     return true;
   }
 
-  function populateMediclaimStep(data) {
-
-    // ===== Header / simple bindings =====
-    document.querySelectorAll("[data-bind]").forEach(el => {
-      const key = el.dataset.bind;
-
-      if (key === "today") {
-        el.textContent = new Date().toLocaleDateString("en-IN");
-      } else if (key === "firstName lastName") {
-        el.textContent = `${data.firstName || ""} ${data.lastName || ""}`;
-      } else if (data[key]) {
-        el.textContent = data[key];
-      }
-    });
-
-    // ===== Family table =====
-    const tbody = document.getElementById("mediclaimFamilyBody");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    let i = 1;
-
-    const familyRows = Object.keys(data)
-      .filter(k => k.startsWith("family["))
-      .reduce((rows, key) => {
-        const idx = key.match(/\[(\d+)\]/)?.[1];
-        if (!rows[idx]) rows[idx] = {};
-        rows[idx][key.split("][").pop().replace("]", "")] = data[key];
-        return rows;
-      }, {});
-
-    Object.values(familyRows).forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-      <td class="center">${i++}</td>
-      <td>${row.relationship || ""}</td>
-      <td>${row.gender || ""}</td>
-      <td>${row.name || ""}</td>
-      <td>${row.dob || ""}</td>
-    `;
-      tbody.appendChild(tr);
-    });
-  }
   const mediclaimYes = document.getElementById("mediclaimYes");
   const mediclaimNo = document.getElementById("mediclaimNo");
   const mediclaimDetails = document.getElementById("mediclaimDetails");
@@ -2611,34 +2666,7 @@ function validateStep3(silent = false) {
   ];
 
   function updateUI() {
-    /* ===== FORM STEPS ===== */
-    steps.forEach((step, i) => {
-      step.classList.toggle("active", i === currentStep);
-    });
-
-    /* ===== SIDEBAR ===== */
-    document.querySelectorAll(".step-menu li").forEach((li, i) => {
-      li.classList.toggle("active", i === currentStep);
-      li.classList.toggle("completed", i < currentStep);
-    });
-
-    /* ===== STEPPER ===== */
-    document.querySelectorAll(".stepper-step").forEach((circle, i) => {
-      circle.classList.toggle("active", i === currentStep);
-      circle.classList.toggle("completed", i < currentStep);
-    });
-
-    /* ===== BUTTONS ===== */
-    prevBtn.style.display = currentStep === 0 ? "none" : "inline-block";
-    nextBtn.style.display =
-      currentStep === steps.length - 1 ? "none" : "inline-block";
-    submitBtn.style.display =
-      currentStep === steps.length - 1 ? "inline-block" : "none";
-
-    if (steps[currentStep]?.classList.contains("step-circular")) {
-      populateMediclaimStep(collectFormData());
-    }
-
+    showStep(currentStep);
   }
 
   /* ===== SIDEBAR CLICK ===== */

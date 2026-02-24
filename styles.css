@@ -292,7 +292,7 @@ body {
 /* Highlight gender group on error */
 .gender-group.error {
   border: 1.5px solid #d32f2f;
-  background: rgba(211, 47, 47, 0.06);
+  background: rgba(185, 35, 35, 0.06);
   border-radius: 6px;
   padding: 12px;
 }
