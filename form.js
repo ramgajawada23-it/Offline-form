@@ -780,65 +780,57 @@ function clearError(el) {
   if (next && next.classList.contains("error-text")) next.remove();
 }
 
-function showError(el, msg, silent = false) {
-  if (silent || !el) return;
+function markError(field, msgText = "This field is required") {
+  if (!field) return;
+  field.classList.add("input-error");
 
-  clearError(el); // ✅ prevents stacking
-
-  el.classList.add("error");
-
-  const s = document.createElement("small");
-  s.className = "error-text";
-  s.innerText = msg;
-  el.after(s);
+  let msg = field.parentElement.querySelector(".error-msg");
+  if (!msg) {
+    msg = document.createElement("div");
+    msg.className = "error-msg";
+    msg.innerText = msgText;
+    field.parentElement.appendChild(msg);
+  }
 }
 
-// Global validateStep3Languages function with silent parameter support
+function clearAllErrors() {
+  document.querySelectorAll(".input-error").forEach(el =>
+    el.classList.remove("input-error")
+  );
+  document.querySelectorAll(".error-msg").forEach(el =>
+    el.remove()
+  );
+  document.querySelectorAll(".step-error").forEach(el => el.remove());
+}
+
+function showError(el, msg, silent = false) {
+  if (silent || !el) return;
+  markError(el, msg);
+}
+
+// Global validateStep3Languages function
 function validateStep3Languages(silent = false) {
   let ok = true;
-
-  const rows = document.querySelectorAll("#languageTable tbody tr");
   const motherTongues = document.querySelectorAll(
     'input[name="motherTongue"]:checked'
   );
 
-  // ✅ Exactly ONE mother tongue required
   if (motherTongues.length !== 1) {
+    const radios = document.querySelectorAll(
+      'input[name="motherTongue"]'
+    );
+
+    radios.forEach(r => r.closest("td")?.classList.add("input-error"));
+
     if (!silent) {
-      alert("Select exactly one Mother Tongue");
+      const step = steps[2];
+      showSummaryError(step, "Select exactly one Mother Tongue");
     }
     ok = false;
   }
-
-  rows.forEach(row => {
-    const nameInput = row.querySelector("input[name*='[name]']");
-    const speak = row.querySelector("input[name*='[speak]']");
-    const read = row.querySelector("input[name*='[read]']");
-    const write = row.querySelector("input[name*='[write]']");
-
-    const name = nameInput?.value.trim();
-    const hasSkill = speak?.checked || read?.checked || write?.checked;
-
-    // 🚫 Skip completely empty row
-    if (!name && !hasSkill) {
-      return;
-    }
-
-    // ❌ Name missing
-    if (!name) {
-      showError(nameInput, "Language name required", silent);
-      ok = false;
-    }
-
-    // ❌ Skill missing
-    if (!hasSkill) {
-      showError(nameInput, "Select at least one skill", silent);
-      ok = false;
-    }
-  });
-
   return ok;
 }
+
 
 /* =========================================================
   MAIN
@@ -938,34 +930,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getEducationRowsData() {
     const rows = [];
+    const allGradRows = document.querySelectorAll(
+      ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
+    );
 
-    // First fixed graduation row
-    const firstGrad = document.querySelector(".graduation-wrapper table tbody tr");
-    if (firstGrad) {
-      const inputs = firstGrad.querySelectorAll("input");
-      rows.push({
-        college: inputs[0].value,
-        board: inputs[1].value,
-        degree: inputs[2].value,
-        stream: inputs[3].value,
-        joining: inputs[4].value,
-        leaving: inputs[5].value,
-        aggregate: inputs[6].value
-      });
-    }
-
-    // Extra graduation rows
-    document.querySelectorAll("#extraGraduations table tbody tr").forEach(tr => {
+    allGradRows.forEach(tr => {
       const inputs = tr.querySelectorAll("input");
-      rows.push({
-        college: inputs[0].value,
-        board: inputs[1].value,
-        degree: inputs[2].value,
-        stream: inputs[3].value,
-        joining: inputs[4].value,
-        leaving: inputs[5].value,
-        aggregate: inputs[6].value
-      });
+      if (inputs.length >= 7) {
+        rows.push({
+          college: inputs[0].value,
+          board: inputs[1].value,
+          degree: inputs[2].value,
+          stream: inputs[3].value,
+          joining: inputs[4].value,
+          leaving: inputs[5].value,
+          aggregate: inputs[6].value
+        });
+      }
     });
 
     return rows;
@@ -1280,8 +1261,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ================= ERROR HELPERS ================= */
   function clearStepErrors(step) {
-    step?.querySelectorAll(".error-text")?.forEach(e => e.remove());
-    step?.querySelectorAll(".error")?.forEach(e => e.classList.remove("error"));
+    step?.querySelectorAll(".input-error")?.forEach(e => 
+      e.classList.remove("input-error")
+    );
+    step?.querySelectorAll(".error-msg")?.forEach(e => e.remove());
     step?.querySelector(".step-error")?.remove();
   }
 
@@ -1295,7 +1278,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function focusFirstError(step) {
-    const el = step?.querySelector(".error");
+    const el = step?.querySelector(".input-error");
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     el?.focus();
   }
@@ -1809,12 +1792,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isRestoring) return true;
 
     if (!ok && !silent) {
-      if (step.querySelector(".error")) {
-        showSummaryError(
-          step,
-          "Please correct the highlighted errors before continuing"
-        );
+      showSummaryError(
+        step,
+        "Please correct the highlighted errors before continuing"
+      );
+
+      // Try focusing first error
+      const firstError = step.querySelector(".input-error") || step.querySelector(".error");
+      if (firstError) {
         focusFirstError(step);
+      } else {
+        shakeCurrentStep();
       }
     }
     return ok;
@@ -1918,11 +1906,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (!ok && !silent) {
-      const hasFieldErrors = step.querySelector(".error");
-      if (hasFieldErrors) {
-        showSummaryError(step, "Please correct the highlighted errors before continuing");
-        focusFirstError(step);
-      }
+      showSummaryError(step, "Please correct the highlighted errors before continuing");
+      focusFirstError(step);
     }
     return ok;
   }
@@ -1951,273 +1936,148 @@ document.addEventListener("DOMContentLoaded", () => {
   //   });
   // }
 
-  function validateStep3(silent = false) {
-    const step = steps[2];
-    if (!step) return true; // defensive check
+function validateStep3(silent = false) {
+  const step = steps[2];
+  if (!step) return true;
 
-    if (!silent) clearStepErrors(step);
+  if (!silent) clearStepErrors(step);
+  let ok = true;
 
-    let ok = true;
-    const rows = document.querySelectorAll(
-      ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
-    );
+  /* ======================================================
+     1️⃣ GRADUATION ROW VALIDATION
+  ====================================================== */
 
-    if (!rows.length) {
-      showStepError(step, "Add at least one education detail", silent);
-      return false;
-    }
+  const gradRows = document.querySelectorAll(
+    ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
+  );
 
-    const degreeSet = new Set();
-    const currentYear = new Date().getFullYear();
-    const dobValue = document.getElementById("dob")?.value;
-    const dobYear = dobValue ? new Date(dobValue).getFullYear() : null;
-    const member = document.getElementById("member");
-    const honors = document.getElementById("honors");
+  gradRows.forEach((row, index) => {
 
+    const college  = row.querySelector("input[name='grad_college[]']");
+    const board    = row.querySelector("input[name='grad_board[]']");
+    const degree   = row.querySelector("input[name='grad_degree[]']");
+    const stream   = row.querySelector("input[name='grad_stream[]']");
+    const joining  = row.querySelector("input[name='grad_joining[]']");
+    const leaving  = row.querySelector("input[name='grad_leaving[]']");
+    const percent  = row.querySelector("input[name='grad_aggregate[]']");
 
-    if (!validateStep3Languages(silent)) {
-      ok = false;
+    const isFirstRow = index === 0;
 
-      if (!silent) {
-        showSummaryError(step, "Please correct language details");
-        focusFirstError(step);
-      }
-    }
+    const anyFilled = [
+      college, board, degree, stream,
+      joining, leaving, percent
+    ].some(el => el && el.value.trim() !== "");
 
-    const graduationRow = document.querySelector(".graduation-wrapper table tbody tr");
-    let graduationLeavingYear = null;
+    // First row mandatory OR optional row if partially filled
+    if (isFirstRow || anyFilled) {
 
-    if (graduationRow) {
-      const gradLeave = graduationRow.querySelector("input[name='grad_leaving[]']");
-      if (gradLeave && isYear(gradLeave.value)) {
-        graduationLeavingYear = +gradLeave.value;
-      }
-    }
-
-    rows.forEach((row, index) => {
-      const college = row.querySelector("input[name='grad_college[]']");
-      const board = row.querySelector("input[name='grad_board[]']");
-      const degree = row.querySelector("input[name='grad_degree[]']");
-      const stream = row.querySelector("input[name='grad_stream[]']");
-      const joinYear = row.querySelector("input[name='grad_joining[]']");
-      const leaveYear = row.querySelector("input[name='grad_leaving[]']");
-      const percent = row.querySelector("input[name='grad_aggregate[]']");
-
-
-      /* ---------- Prevent Completely Blank Row ---------- */
-      const allEmpty =
-        !college.value.trim() &&
-        !board.value.trim() &&
-        !degree.value.trim() &&
-        !stream.value.trim() &&
-        !joinYear.value.trim() &&
-        !leaveYear.value.trim() &&
-        !percent.value.trim();
-
-      if (allEmpty) {
-        showError(college, "Fill education details or remove row", silent);
-        ok = false;
-        return;
-      }
-
-      /* ---------- Required Fields ---------- */
-      // ✅ College Name
-      if (!college.value || !/^[A-Za-z0-9 .,'&()-]+$/.test(college.value)) {
-        showError(college, "Required", silent);
-        ok = false;
-      }
-
-      // ✅ Board
-      if (!board.value || !isAlphaOnly(board.value)) {
-        showError(board, "Required", silent);
-        ok = false;
-      }
-
-      // ✅ Degree
-      if (!degree.value || !isAlphaOnly(degree.value)) {
-        showError(degree, "Required", silent);
-        ok = false;
-      }
-
-      const degreeName = degree.value.toLowerCase();
-      const isSchooling = degreeName.includes("schooling") ||
-        degreeName.includes("10th") ||
-        degreeName.includes("12th") ||
-        degreeName.includes("ssc") ||
-        degreeName.includes("hsc");
-
-      if (!isSchooling) {
-        if (!stream.value.trim()) {
-          showError(stream, "Required", silent);
+      [college, board, degree, stream, joining, leaving, percent]
+      .forEach(el => {
+        if (!el || !el.value.trim()) {
+          markError(el);
           ok = false;
-        } else if (!isAlphaOnly(stream.value)) {
-          showError(stream, "Alphabets only", silent);
+        }
+      });
+
+      // Year validation
+      if (joining?.value && !/^\d{4}$/.test(joining.value)) {
+        markError(joining, "Enter valid 4-digit year");
+        ok = false;
+      }
+
+      if (leaving?.value && !/^\d{4}$/.test(leaving.value)) {
+        markError(leaving, "Enter valid 4-digit year");
+        ok = false;
+      }
+
+      if (joining?.value && leaving?.value) {
+        if (parseInt(leaving.value) <= parseInt(joining.value)) {
+          markError(leaving, "Leaving year must be after joining year");
           ok = false;
         }
       }
 
-      const isGraduation =
-        row.classList.contains("main-graduation-row") ||
-        /^(b\.?|bachelor)/.test(degreeName) ||
-        degreeName.includes("graduation");
-
-      const isPreGrad = degreeName.includes("10th") ||
-        degreeName.includes("12th") ||
-        degreeName.includes("ssc") ||
-        degreeName.includes("hsc") ||
-        degreeName.includes("schooling");
-
-      const isPostGrad = !isGraduation && !isPreGrad;
-
-      if (isYear(joinYear.value) && isYear(leaveYear.value)) {
-
-        if (+leaveYear.value <= +joinYear.value) {
-          showError(leaveYear, "Leaving year must be after joining year", silent);
-          ok = false;
-        }
-
-        // Graduation row
-        if (isGraduation) {
-          if (+leaveYear.value - +joinYear.value > 6) {
-            showError(leaveYear, "Graduation duration cannot exceed 6 years", silent);
-            ok = false;
-          }
-        }
-
-        // Pre-graduation rows
-        if (isPreGrad && graduationLeavingYear !== null) {
-          if (+leaveYear.value >= graduationLeavingYear) {
-            showError(leaveYear, "Must be completed before Graduation", silent);
-            ok = false;
-          }
-        }
-
-        // Post-graduation rows
-        if (isPostGrad && graduationLeavingYear !== null) {
-          if (+joinYear.value <= graduationLeavingYear) {
-            showError(joinYear, "Post-graduation must start after Graduation", silent);
-            ok = false;
-          }
-        }
-      }
-
-      /* ---------- Year Validation ---------- */
-      if (!isYear(joinYear.value)) {
-        showError(joinYear, "Enter valid 4-digit joining year", silent);
-        ok = false;
-      } else if (+joinYear.value > currentYear) {
-        showError(joinYear, "Joining year cannot be in the future", silent);
-        ok = false;
-      } else if (dobYear !== null && +joinYear.value < dobYear + 5) {
-        showError(joinYear, "Joining year is not realistic", silent);
-        ok = false;
-      }
-
-      if (!isYear(leaveYear.value)) {
-        showError(leaveYear, "Enter valid 4-digit leaving year", silent);
-        ok = false;
-      } else if (+leaveYear.value > currentYear) {
-        showError(leaveYear, "Leaving year cannot be in the future", silent);
-        ok = false;
-      }
-
-      if (
-        isYear(joinYear.value) &&
-        isYear(leaveYear.value) &&
-        +leaveYear.value > +joinYear.value
-      ) {
-        if (+leaveYear.value - +joinYear.value > 10) {
-          showError(leaveYear, "Education duration seems invalid (>10 yrs)", silent);
+      // Aggregate validation
+      if (percent?.value) {
+        const p = parseFloat(percent.value);
+        if (isNaN(p) || p < 0 || p > 100) {
+          markError(percent, "Enter percentage between 0–100");
           ok = false;
         }
       }
+    }
+  });
 
-      /* ---------- Percentage ---------- */
-      const percentValue = Number(percent.value);
+  /* ======================================================
+     2️⃣ LANGUAGE VALIDATION
+  ====================================================== */
 
-      if (percent.value === "" || isNaN(percentValue)) {
-        showError(percent, "Required", silent);
-        ok = false;
-      } else if (percentValue < 0 || percentValue > 100) {
-        showError(percent, "Enter valid percentage (0-100)", silent);
-        ok = false;
-      }
+  const languageRows = document.querySelectorAll("#languageTable tbody tr");
 
-      /* ---------- Prevent Duplicate Degrees ---------- */
-      if (degree.value.trim()) {
-        const degreeKey =
-          degree.value.trim().toLowerCase() + "_" +
-          stream.value.trim().toLowerCase();
+  languageRows.forEach(row => {
 
-        if (degreeSet.has(degreeKey)) {
-          showError(degree, "Duplicate degree entry", silent);
-          ok = false;
-        } else {
-          degreeSet.add(degreeKey);
-        }
-      }
-    });
+    const langInput = row.querySelector("input[type='text']");
+    const speak = row.querySelector("input[name*='speak']");
+    const read  = row.querySelector("input[name*='read']");
+    const write = row.querySelector("input[name*='write']");
 
-    if (!member || !member.value) {
-      showError(member, "Please select an option", silent);
+    const anySkill = speak?.checked || read?.checked || write?.checked;
+
+    // skip empty row
+    if (!langInput.value.trim() && !anySkill) return;
+
+    if (!langInput.value.trim()) {
+      markError(langInput, "Enter language");
       ok = false;
     }
 
-    if (!honors || !honors.value) {
-      showError(honors, "Please select an option", silent);
+    if (!anySkill) {
+      markError(langInput, "Select at least one skill");
       ok = false;
     }
+  });
 
-    const literary = document.getElementById("activityLiterary");
-    const sports = document.getElementById("activitySports");
-    const hobbies = document.getElementById("activityHobbies");
-    const extraError = document.getElementById("extraCurricularError");
+  /* ======================================================
+     3️⃣ MOTHER TONGUE (EXACTLY ONE)
+  ====================================================== */
 
-    if (
-      !literary?.value.trim() &&
-      !sports?.value.trim() &&
-      !hobbies?.value.trim()
-    ) {
-      if (extraError) extraError.style.display = "block";
-      const target = literary || sports || hobbies;
-      if (target) showError(target, "Enter at least one activity", silent);
-      ok = false;
-    } else {
-      if (extraError) extraError.style.display = "none";
+  const selectedMotherTongue =
+    document.querySelectorAll("input[name='motherTongue']:checked");
+
+  if (selectedMotherTongue.length !== 1) {
+    document.querySelectorAll("input[name='motherTongue']")
+      .forEach(r => r.classList.add("input-error"));
+
+    if (!silent) {
+      showSummaryError(step, "Select exactly one Mother Tongue");
     }
 
-    const strengths = document.getElementById("strengths");
-    const weaknesses = document.getElementById("Weaknesses");
-    const values = document.getElementById("Values");
-
-    if (!strengths || isBlank(strengths.value)) {
-      showError(strengths, "Strengths are required", silent);
-      ok = false;
-    }
-    if (!weaknesses || isBlank(weaknesses.value)) {
-      showError(weaknesses, "Weaknesses are required", silent);
-      ok = false;
-    }
-    if (!values || isBlank(values.value)) {
-      showError(values, "Values are required", silent);
-      ok = false;
-    }
-
-    step.querySelectorAll("select + textarea").forEach(textarea => {
-      const select = textarea.previousElementSibling;
-      if (select?.value.toLowerCase() === "yes" && isBlank(textarea.value)) {
-        showError(textarea, "Details are required when 'Yes' is selected", silent);
-        ok = false;
-      }
-    });
-
-    if (!ok && !silent) {
-      showSummaryError(step, "Please correct the highlighted errors before continuing");
-      focusFirstError(step);
-    }
-
-    return ok;
+    ok = false;
   }
+
+  /* ======================================================
+     4️⃣ TEXTAREAS REQUIRED
+  ====================================================== */
+
+  ["strengths", "Weaknesses", "Values"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value.trim()) {
+      markError(el);
+      ok = false;
+    }
+  });
+
+  /* ======================================================
+     FINAL ERROR HANDLING
+  ====================================================== */
+
+  if (!ok && !silent) {
+    showSummaryError(step, "Please correct the highlighted errors in Step 3");
+    focusFirstError(step);
+  }
+
+  return ok;
+}
 
 
   /* =========================================================
