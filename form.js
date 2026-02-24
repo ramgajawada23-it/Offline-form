@@ -160,7 +160,32 @@ async function restoreDraftState(data) {
     isRestoring = false;
   }
 }
+function toggleExperienceDependentSections() {
+  const years = Number(document.getElementById("expYears")?.value || 0);
+  const months = Number(document.getElementById("expMonths")?.value || 0);
 
+  const show = years > 0 || months > 0;
+
+  const salarySection = document.getElementById("salarySection");
+  const expSection = document.getElementById("experienceDetails");
+  const assignments = document.getElementById("assignmentsHandled");
+  const uanContainer = document.getElementById("uanContainer");
+
+  if (salarySection) salarySection.style.display = show ? "block" : "none";
+  if (expSection) expSection.style.display = show ? "block" : "none";
+  if (assignments) assignments.style.display = show ? "block" : "none";
+
+  if (uanContainer) {
+    uanContainer.style.display = show ? "block" : "none";
+    if (!show) {
+      const uanInput = document.getElementById("uan");
+      if (uanInput) {
+        uanInput.value = "";
+        if (typeof clearError === "function") clearError(uanInput);
+      }
+    }
+  }
+}
 
 function restoreFamilyRows(fields) {
   const tbody = document.getElementById("familyTableBody");
@@ -587,10 +612,30 @@ function fillMediclaimEmployeeDetails() {
     if (map[key]) el.textContent = map[key]();
   });
 }
+// --- UI Update Helpers ---
+function updateStepperUI() {
+  if (window.stepperSteps && stepperSteps.length > 0) {
+    stepperSteps.forEach((circle, i) => {
+      circle.classList.toggle("active", i === currentStep);
+      circle.classList.toggle("completed", i < currentStep);
+    });
+  }
+}
+
+function updateSidebarUI() {
+  if (window.sidebarItems && sidebarItems.length > 0) {
+    sidebarItems.forEach((li, i) => {
+      li.classList.toggle("active", i === currentStep);
+      li.classList.toggle("completed", i < currentStep);
+    });
+  }
+}
+
 // Single source of truth for step transitions
 function showStep(index) {
-  if (index < 0 || index >= steps.length) return;
+  if (index < 0 || index >= (steps?.length || 0)) return;
   
+  // 🔥 THIS LINE IS MANDATORY FOR SYNC
   currentStep = index;
 
   /* 1. Toggle Step Visibility */
@@ -598,32 +643,20 @@ function showStep(index) {
     step.classList.toggle("active", i === index);
   });
 
-  /* 2. Update Sidebar */
-  if (sidebarItems.length > 0) {
-    sidebarItems.forEach((li, i) => {
-      li.classList.toggle("active", i === index);
-      li.classList.toggle("completed", i < index);
-    });
-  }
+  /* 2. Update Indicators */
+  updateSidebarUI();
+  updateStepperUI();
 
-  /* 3. Update Stepper */
-  if (stepperSteps.length > 0) {
-    stepperSteps.forEach((circle, i) => {
-      circle.classList.toggle("active", i === index);
-      circle.classList.toggle("completed", i < index);
-    });
-  }
-
-  /* 4. Update Navigation Buttons */
+  /* 3. Update Navigation Buttons */
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
   const submitBtn = document.getElementById("submitBtn");
 
   if (prevBtn) prevBtn.style.display = index === 0 ? "none" : "inline-block";
-  if (nextBtn) nextBtn.style.display = index === steps.length - 1 ? "none" : "inline-block";
-  if (submitBtn) submitBtn.style.display = index === steps.length - 1 ? "inline-block" : "none";
+  if (nextBtn) nextBtn.style.display = index === (steps.length - 1) ? "none" : "inline-block";
+  if (submitBtn) submitBtn.style.display = index === (steps.length - 1) ? "inline-block" : "none";
 
-  /* 5. Logic for specific steps */
+  /* 4. Logic for specific steps */
   if (index === 5) { // Step‑6 (Mediclaim)
     fillMediclaimEmployeeDetails();
     fillMediclaimFamilyDetails();
@@ -631,6 +664,11 @@ function showStep(index) {
       populateMediclaimStep(collectFormData());
     }
   }
+}
+
+// Global Navigator
+function goToStep(stepIndex) {
+    showStep(stepIndex); 
 }
 
 function initFamilyRow(row) {
@@ -919,6 +957,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Always start from Step 0 visually
   showStep(0);
+  toggleExperienceDependentSections();
 
   const loggedInMobile =
     sessionStorage.getItem("loggedInMobile") ||
@@ -945,7 +984,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 🔥 Step restore happens HERE (after DOM + steps ready)
         const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
-        showStep(stepToRestore);
+        goToStep(stepToRestore);
+        toggleExperienceDependentSections();
 
         return;
       }
@@ -955,9 +995,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (localDraft) {
         await restoreDraftState(localDraft);
 
+        // 🔥 Step restore happens HERE
         const stepToRestore = !isNaN(localDraft.step) ? Number(localDraft.step) : 0;
-
-        showStep(stepToRestore);
+        goToStep(stepToRestore);
+        toggleExperienceDependentSections();
       }
     } catch (err) {
       console.error("Draft restore failed:", err);
@@ -1247,7 +1288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // YEARS
-  // document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
+  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
 
   // MONTHS
   const monthsEl = document.getElementById("expMonths");
@@ -2181,31 +2222,6 @@ function validateStep3(silent = false) {
   /* =========================================================
     STEP 4 – EXPERIENCE
   ========================================================= */
-  function toggleExperienceDependentSections() {
-    const years = Number(document.getElementById("expYears")?.value || 0);
-    const months = Number(document.getElementById("expMonths")?.value || 0);
-    const hasExperience = years > 0 || months > 0;
-
-    const expSection = document.getElementById("experienceDetails");
-    const assignments = document.getElementById("assignmentsHandled");
-    const salarySection = document.getElementById("salarySection");
-    const uanContainer = document.getElementById("uanContainer");
-
-    if (expSection) expSection.style.display = hasExperience ? "block" : "none";
-    if (assignments) assignments.style.display = hasExperience ? "block" : "none";
-    if (salarySection) salarySection.style.display = hasExperience ? "block" : "none";
-
-    if (uanContainer) {
-      uanContainer.style.display = hasExperience ? "block" : "none";
-      if (!hasExperience) {
-        const uanInput = document.getElementById("uan");
-        if (uanInput) {
-          uanInput.value = "";
-          if (typeof clearError === "function") clearError(uanInput);
-        }
-      }
-    }
-  }
 
   // Bind events
   document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
@@ -2672,9 +2688,7 @@ function validateStep3(silent = false) {
   /* ===== SIDEBAR CLICK ===== */
   window.goToStep = index => {
     if (index > currentStep && !validators[currentStep](false)) return;
-
-    currentStep = index;
-    updateUI();
+    goToStep(index);
     updateNextVisualState();
   };
 
@@ -2689,15 +2703,13 @@ function validateStep3(silent = false) {
     }
 
     debouncedSaveDraft();
-    currentStep++;
-    updateUI();
+    goToStep(currentStep + 1);
   };
 
   /* ===== PREVIOUS BUTTON ===== */
   prevBtn.onclick = () => {
     debouncedSaveDraft();
-    currentStep--;
-    updateUI();
+    goToStep(currentStep - 1);
     updateNextVisualState();
   };
 
