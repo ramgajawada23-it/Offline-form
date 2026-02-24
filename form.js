@@ -582,9 +582,20 @@ function fillMediclaimEmployeeDetails() {
   const map = {
     "firstName lastName": () =>
       `${firstName.value || ""} ${lastName.value || ""}`.trim(),
-    dob: () => dob.value,
+    dob: () => {
+      const val = dob.value;
+      if (!val) return "";
+      const [y, m, d] = val.split("-");
+      return `${d}/${m}/${y}`;
+    },
     employeeId: () => employeeId.value,
-    today: () => new Date().toLocaleDateString()
+    today: () => {
+      const now = new Date();
+      const d = String(now.getDate()).padStart(2, '0');
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const y = now.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
   };
   document.querySelectorAll("[data-bind]").forEach(el => {
     const key = el.dataset.bind;
@@ -1252,7 +1263,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     interviewDropdown.addEventListener("change", function () {
 
-      if (this.value === "yes") {
+      if (this.value.toLowerCase() === "yes") {
         interviewDetails.style.display = "block";
       } else {
         interviewDetails.style.display = "none";

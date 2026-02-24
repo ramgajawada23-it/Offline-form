@@ -333,7 +333,7 @@
 
                 <td>
                   <div class="form-field">
-                    <input type="number" name="family[${index}][income]" min="0" max="999999">
+                    <input type="number" name="family[0][income]" min="0" max="999999">
                   </div>
                 </td>
               </tr>
@@ -827,7 +827,7 @@
             <div class="form-field">
               <label>Do you have any objection if we refer to your employer?</label>
               <select name="objectionToRefer">
-                <option>Select</option>
+                <option value="">Select</option>
                 <option>Yes</option>
                 <option>No</option>
               </select>
@@ -899,6 +899,7 @@
             </div>
 
             <hr>
+          </div> <!-- Close declaration-text -->
         </section>
 
         <!-- ================= STEP 6 ================= -->
