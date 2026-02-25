@@ -402,11 +402,8 @@ async function syncOfflineSubmissions() {
   console.log("Offline sync completed");
 }
 
-// Attach sync to online event (Combined with the listener at the top)
-
 const isFutureDate = d => d && new Date(d) > new Date();
 const minLen = (v, l) => v && v.trim().length >= l;
-// const onlyNumbers = v => /^\d+$/.test(v);
 const val = el => el?.value?.trim() || "";
 
 const isValidPersonName = v =>
@@ -458,7 +455,7 @@ window.addFamilyRow = () => {
     `;
   tbody.appendChild(tr);
 
-  // ✅ Limit income to 6 digits (CORRECT PLACE)
+  // ✅ Limit income to 6 digits
   const incomeInput = tr.querySelector("input[name*='income']");
   incomeInput.addEventListener("input", e => {
     let v = e.target.value.replace(/\D/g, "");
@@ -466,11 +463,10 @@ window.addFamilyRow = () => {
     e.target.value = v;
   });
 
-  // ✅ THIS WAS MISSING
   const rel = tr.querySelector("select[name*='relationship']");
   rel.addEventListener("change", () => {
     syncFamilyRow(tr);
-    updateFamilyRelationshipOptions(); // ✅ ADD THIS
+    updateFamilyRelationshipOptions();
   });
   bindFamilyRowAutosave(tr);
 };
@@ -623,84 +619,6 @@ function updateSidebarUI() {
   }
 }
 
-// Single source of truth for step transitions
-function showStep(index) {
-  if (index < 0 || index >= (steps?.length || 0)) return;
-
-  // 🔥 THIS LINE IS MANDATORY FOR SYNC
-  currentStep = index;
-
-  /* 1. Toggle Step Visibility */
-  steps.forEach((step, i) => {
-    step.classList.toggle("active", i === index);
-  });
-
-  /* 2. Update Indicators */
-  updateSidebarUI();
-  updateStepperUI();
-
-  /* 3. Update Navigation Buttons */
-  const prevBtn = document.getElementById("prevBtn");
-  const nextBtn = document.getElementById("nextBtn");
-  const submitBtn = document.getElementById("submitBtn");
-
-  if (prevBtn) prevBtn.style.display = index === 0 ? "none" : "inline-block";
-  if (nextBtn) nextBtn.style.display = index === (steps.length - 1) ? "none" : "inline-block";
-  if (submitBtn) submitBtn.style.display = index === (steps.length - 1) ? "inline-block" : "none";
-
-  /* 4. Logic for specific steps */
-  if (index === 5) { // Step‑6 (Mediclaim)
-    fillMediclaimEmployeeDetails();
-    fillMediclaimFamilyDetails();
-    if (typeof populateMediclaimStep === "function") {
-      populateMediclaimStep(collectFormData());
-    }
-  }
-}
-
-// Global Navigator
-function goToStep(stepIndex) {
-  if (
-    typeof stepIndex !== "number" ||
-    stepIndex < 0 ||
-    stepIndex >= (steps?.length || 0)
-  ) return;
-
-  if (stepIndex === currentStep) return;
-
-  showStep(stepIndex);
-}
-
-function initFamilyRow(row) {
-  const rel = row.querySelector("select[name*='relationship']");
-  if (!rel) return;
-
-  rel.addEventListener("change", () => {
-    syncFamilyRow(row);
-    updateFamilyRelationshipOptions();
-  });
-
-  // initial state sync
-  syncFamilyRow(row);
-  updateFamilyRelationshipOptions();
-}
-
-function ensureVisibleError(step) {
-  const err = step.querySelector(".error");
-  if (!err) {
-    console.warn("Validation failed but no field marked error");
-    shakeCurrentStep();
-  }
-}
-
-const candidateForm = document.getElementById("candidateForm");
-
-candidateForm?.addEventListener("change", e => {
-  if (e.target.closest("#familyTableBody")) {
-    fillMediclaimFamilyDetails();
-  }
-});
-
 function fillMediclaimFamilyDetails() {
   const tbody = document.getElementById("mediclaimFamilyBody");
   if (!tbody) return;
@@ -756,22 +674,6 @@ function fillMediclaimFamilyDetails() {
   });
 }
 
-
-candidateForm?.addEventListener("change", e => {
-  if (!e.target.matches("select[name*='relationship']")) return;
-
-  if (e.target.value === "Spouse") {
-    const spouses = [
-      ...document.querySelectorAll("select[name*='relationship']")
-    ].filter(s => s.value === "Spouse");
-
-    if (spouses.length > 1) {
-      alert("Only one spouse is allowed");
-      e.target.value = "";
-    }
-  }
-});
-
 function populateMediclaimStep(data) {
   if (!data) return;
 
@@ -815,6 +717,105 @@ function populateMediclaimStep(data) {
     tbody.appendChild(tr);
   });
 }
+
+
+// Single source of truth for step transitions
+function showStep(index) {
+  if (index < 0 || index >= (steps?.length || 0)) return;
+
+  // 🔥 THIS LINE IS MANDATORY FOR SYNC
+  currentStep = index;
+
+  /* 1. Toggle Step Visibility */
+  steps.forEach((step, i) => {
+    step.classList.toggle("active", i === index);
+  });
+
+  /* 2. Update Indicators */
+  updateSidebarUI();
+  updateStepperUI();
+
+  /* 3. Update Navigation Buttons */
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const submitBtn = document.getElementById("submitBtn");
+
+  if (prevBtn) prevBtn.style.display = index === 0 ? "none" : "inline-block";
+  if (nextBtn) nextBtn.style.display = index === (steps.length - 1) ? "none" : "inline-block";
+  if (submitBtn) submitBtn.style.display = index === (steps.length - 1) ? "inline-block" : "none";
+
+  /* 4. Logic for specific steps */
+  if (index === 5) { // Step‑6 (Mediclaim)
+    fillMediclaimEmployeeDetails();
+    fillMediclaimFamilyDetails();
+    if (typeof populateMediclaimStep === "function") {
+      populateMediclaimStep(collectFormData());
+    }
+  }
+}
+
+// ✅ FIX: Renamed internal navigation function to avoid conflict with window.goToStep override
+function navigateToStep(stepIndex) {
+  if (
+    typeof stepIndex !== "number" ||
+    stepIndex < 0 ||
+    stepIndex >= (steps?.length || 0)
+  ) return;
+
+  if (stepIndex === currentStep) return;
+
+  showStep(stepIndex);
+}
+
+function initFamilyRow(row) {
+  const rel = row.querySelector("select[name*='relationship']");
+  if (!rel) return;
+
+  rel.addEventListener("change", () => {
+    syncFamilyRow(row);
+    updateFamilyRelationshipOptions();
+  });
+
+  // initial state sync
+  syncFamilyRow(row);
+  updateFamilyRelationshipOptions();
+}
+
+function ensureVisibleError(step) {
+  const err = step.querySelector(".error");
+  if (!err) {
+    console.warn("Validation failed but no field marked error");
+    shakeCurrentStep();
+  }
+}
+
+const candidateForm = document.getElementById("candidateForm");
+
+candidateForm?.addEventListener("change", e => {
+  if (e.target.closest("#familyTableBody")) {
+    fillMediclaimFamilyDetails();
+  }
+});
+
+
+
+
+candidateForm?.addEventListener("change", e => {
+  if (!e.target.matches("select[name*='relationship']")) return;
+
+  if (e.target.value === "Spouse") {
+    const spouses = [
+      ...document.querySelectorAll("select[name*='relationship']")
+    ].filter(s => s.value === "Spouse");
+
+    if (spouses.length > 1) {
+      alert("Only one spouse is allowed");
+      e.target.value = "";
+    }
+  }
+});
+
+
 
 function allowOnlyYear(input) {
   input.addEventListener("input", e => {
@@ -862,7 +863,7 @@ async function loadDraft(mobile) {
 
     if (!response.ok) return null;
 
-    serverDraft = await response.json(); // ✅ DEFINED HERE
+    serverDraft = await response.json();
     return serverDraft;
   } catch {
     return null;
@@ -927,6 +928,23 @@ function validateStep3Languages(silent = false) {
   return ok;
 }
 
+function showSummaryError(step, msg) {
+  step.querySelector(".step-error")?.remove();
+
+  const div = document.createElement("div");
+  div.className = "step-error";
+  div.innerText = msg;
+
+  const title = step.querySelector(".section-title");
+
+  if (title && title.parentNode) {
+    title.parentNode.insertBefore(div, title);
+  } else {
+    step.prepend(div);
+  }
+}
+
+
 
 /* =========================================================
   MAIN STATE & INITIALIZATION
@@ -964,7 +982,7 @@ document.addEventListener("DOMContentLoaded", () => {
   (async function restoreDraftFlow() {
     try {
       await openDB();
-      // setupEducationTable();
+
       // 1️⃣ Try server first
       serverDraft = await loadDraft(loggedInMobile);
 
@@ -975,9 +993,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         await restoreDraftState(parsed);
 
-        // 🔥 Step restore happens HERE (after DOM + steps ready)
+        // ✅ FIX: Use navigateToStep (internal) instead of goToStep (which may run validators)
         const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
-        goToStep(stepToRestore);
+        navigateToStep(stepToRestore);
         toggleExperienceDependentSections();
         activateAutosave();
         return;
@@ -988,9 +1006,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (localDraft) {
         await restoreDraftState(localDraft);
 
-        // 🔥 Step restore happens HERE
+        // ✅ FIX: Use navigateToStep (internal) instead of goToStep
         const stepToRestore = !isNaN(localDraft.step) ? Number(localDraft.step) : 0;
-        goToStep(stepToRestore);
+        navigateToStep(stepToRestore);
         toggleExperienceDependentSections();
         activateAutosave();
         return;
@@ -1076,7 +1094,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return rows;
   }
-  // Old saveEducationRows (localStorage) removed
 
   window.restoreEducationRows = function (saved = []) {
     if (!Array.isArray(saved) || saved.length === 0) return;
@@ -1099,30 +1116,6 @@ document.addEventListener("DOMContentLoaded", () => {
       addEducationRow(saved[i]);
     }
   };
-
-
-  // function setupEducationTable() {
-  //   const tbody = document.getElementById("educationTableBody");
-  //   if (!tbody) return;
-
-  //   tbody.innerHTML = "";
-
-  //   addEducationRow(null, false); 
-  //   addEducationRow(null, false); 
-  //   addEducationRow(null, false);
-
-  //   const addBtn = document.getElementById("addEducationBtn");
-  //   addBtn?.addEventListener("click", () => {
-  //     addEducationRow(null, true);
-  //     debouncedSaveDraft();
-  //   });
-  // }
-
-  // function removeRow(btn) {
-  //   btn.closest("tr").remove();
-  //   debouncedSaveDraft();
-  // }
-
 
 
   ["loanAmount", "loanBalance", "loanSalary"].forEach(id => {
@@ -1153,8 +1146,6 @@ document.addEventListener("DOMContentLoaded", () => {
       mobile2.readOnly = true;
     }
   }
-
-  // restoreDraft(); // Removed (using async loadDraftFromDB on window.load)
 
   const mainForm = document.getElementById("candidateForm");
   if (!mainForm) {
@@ -1297,7 +1288,6 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.value = v;
     toggleExperienceDependentSections();
   });
-  // toggleExperienceDependentSections();
 
   function activateAutosave() {
     if (autosaveActivated) return; // ✅ prevent duplicate binding
@@ -1345,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function allowOnlyDigits(input, maxLength) {
     input.addEventListener("input", e => {
-      let v = e.target.value.replace(/\D/g, ""); // ❌ remove non-digits
+      let v = e.target.value.replace(/\D/g, ""); // remove non-digits
       if (v.length > maxLength) v = v.slice(0, maxLength);
       e.target.value = v;
     });
@@ -1418,21 +1408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     step.classList.add("shake");
   }
 
-  function showSummaryError(step, msg) {
-    step.querySelector(".step-error")?.remove();
 
-    const div = document.createElement("div");
-    div.className = "step-error";
-    div.innerText = msg;
-
-    const title = step.querySelector(".section-title");
-
-    if (title && title.parentNode) {
-      title.parentNode.insertBefore(div, title);
-    } else {
-      step.prepend(div);
-    }
-  }
   document.getElementById("monthlyTotal")?.addEventListener("keydown", e => {
     e.preventDefault();
   });
@@ -1487,7 +1463,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-    PAN + AADHAAR (CORRECTED)
+    PAN + AADHAAR
   ========================================================= */
   const panInput = document.getElementById("panDisplay");
   const panHidden = document.getElementById("pan");
@@ -1496,7 +1472,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== PAN =====
   panInput?.addEventListener("input", e => {
-    if (isRestoring) return; // ✅ Fixed flag name
+    if (isRestoring) return;
 
     let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (v.length > 10) v = v.slice(0, 10);
@@ -1526,7 +1502,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== AADHAAR =====
   aadhaarInput?.addEventListener("input", e => {
-    if (isRestoring) return; // ✅ Fixed flag name
+    if (isRestoring) return;
 
     let v = e.target.value.replace(/\D/g, "");
     if (v.length > 12) v = v.slice(0, 12);
@@ -1555,7 +1531,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   /* =========================================================
-   BANK ACCOUNT (FIXED MASKING LOGIC)
+   BANK ACCOUNT
  ========================================================= */
 
   const bankAccInput = document.getElementById("bankAccountDisplay");
@@ -1631,10 +1607,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   maritalStatus?.addEventListener("change", toggleMaritalFields);
-  // toggleMaritalFields();
 
   prolongedIllness?.addEventListener("change", toggleIllnessFields);
-  // toggleIllnessFields();
 
   function syncMaskedKYC() {
     if (
@@ -1691,8 +1665,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fn = step.querySelector("#firstName");
     const ln = step.querySelector("#lastName");
-    // const pan = step.querySelector("#pan");
-    // const aadhaar = step.querySelector("#aadhaar");
     const dob = step.querySelector("#dob");
     const age = step.querySelector("#age");
 
@@ -1894,16 +1866,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    // step.querySelectorAll("input, textarea").forEach(el => {
-    //   if (isSkippable(el)) return;
-
-    //   if (!el.value.trim()) {
-    //     showError(el, "Required", silent);
-    //     ok = false;
-    //   }
-    // });
-
-    // ----- PAN -----
+    // ----- Email -----
     const email = step.querySelector("#email");
 
     if (isBlank(email.value)) {
@@ -1995,11 +1958,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ok = false;
       }
 
-      // if (income.value && income.value.length > 6) {
-      //   showError(income, "Maximum 6 digits allowed", silent);
-      //   ok = false;
-      // }
-
       if (income && Number(income.value) < 0) {
         showError(income, "Income cannot be negative", silent);
         ok = false;
@@ -2041,26 +1999,6 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================================================
     STEP 3 – EDUCATION
   ========================================================= */
-  // function addLanguage() {
-  //   const container = document.getElementById("extraLanguages");
-  //   const div = document.createElement("div");
-  //   div.className = "language-item";
-  //   div.innerHTML = `
-  //   <input type="text" placeholder="Enter language" class="language-input" required>
-  //   <button type="button" onclick="this.parentElement.remove()">Remove</button>
-  // `;
-  //   container.appendChild(div);
-  // }
-
-  // function restoreLanguages(savedLanguages) {
-  //   const tbody = document.querySelector("#languageTable tbody");
-  //   tbody.innerHTML = "";
-  //   addLanguageRow("English", false);
-  //   addLanguageRow("Hindi", false);
-  //   savedLanguages.forEach(lang => {
-  //     addLanguageRow(lang.name, true, lang);
-  //   });
-  // }
 
   function validateStep3(silent = false) {
     if (isRestoring) return true; // ✅ Skip
@@ -2316,14 +2254,6 @@ document.addEventListener("DOMContentLoaded", () => {
     STEP 4 – EXPERIENCE
   ========================================================= */
 
-  // Bind events
-  document.getElementById("expYears")?.addEventListener("input", toggleExperienceDependentSections);
-  document.getElementById("expMonths")?.addEventListener("input", toggleExperienceDependentSections);
-  // Call once on load/init logic (handled in restoreDraftState or similar, but good to ensure)
-
-  /* =========================================================
-    STEP 4 – EXPERIENCE
-  ========================================================= */
   function validateStep4(silent = false) {
     if (isRestoring) return true; // ✅ Skip
     const step = steps[3];
@@ -2781,15 +2711,14 @@ document.addEventListener("DOMContentLoaded", () => {
     showStep(currentStep);
   }
 
-  /* ===== SIDEBAR CLICK ===== */
-  window.goToStep = index => {
+  // ✅ FIX: window.goToStep now uses navigateToStep internally to avoid infinite recursion
+  window.goToStep = function (index) {
     if (index > currentStep && !validators[currentStep](false)) return;
-    goToStep(index);
+    navigateToStep(index);   // ← calls the safe internal function, NOT window.goToStep
     updateNextVisualState();
   };
 
   /* ===== NEXT BUTTON ===== */
-
   nextBtn.onclick = () => {
     const isValid = validators[currentStep](false);
 
@@ -2799,18 +2728,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     debouncedSaveDraft();
-    goToStep(currentStep + 1);
+    navigateToStep(currentStep + 1);   // ✅ use internal function
   };
 
   /* ===== PREVIOUS BUTTON ===== */
   prevBtn.onclick = () => {
     debouncedSaveDraft();
-    goToStep(currentStep - 1);
+    navigateToStep(currentStep - 1);   // ✅ use internal function
     updateNextVisualState();
   };
 
   /* ===== VISUAL STATE ONLY (NEVER DISABLE) ===== */
-
   function updateNextVisualState() {
     nextBtn.classList.remove("disabled"); // ✅ visual-only, never block logic
   }
@@ -2831,28 +2759,32 @@ document.addEventListener("DOMContentLoaded", () => {
     updateNextVisualState();
   });
 
-  /* ===== INITIAL RENDER ===== */
-
-
   /* ================= SUBMIT ================= */
   document.getElementById("candidateForm").onsubmit = async e => {
     e.preventDefault();
     isSubmitting = true;
     debouncedSaveDraft(); // ✅ Final save before submit logic
+
+    // ✅ FIX: Validate all steps without triggering goToStep navigation
+    // Use navigateToStep + updateUI to display steps during validation loop
     for (let i = 0; i < steps.length; i++) {
       currentStep = i;
       updateUI();
-      if (!validators[i](false)) return;
+      if (!validators[i](false)) {
+        isSubmitting = false; // ✅ Reset flag so autosave can work again
+        return;
+      }
     }
 
-    const payload = collectFormDataForSubmit(); // your form → JSON function
+    const payload = collectFormDataForSubmit();
     await submitFormOnlineOrOffline(payload);
   };
 
 
-  ///////////////---------collectFormData-------////////////,.......................................
+  ///////////////---------collectFormData-------////////////
   function collectFormDataForSubmit() {
-    const form = document.getElementById("candidateForm"); const data = {};
+    const form = document.getElementById("candidateForm");
+    const data = {};
 
     form.querySelectorAll("input, select, textarea").forEach(el => {
       if (!el.name) return;
@@ -2879,7 +2811,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function submitFormOnlineOrOffline(payload) {
-    // 🚨 Backend not ready yet
     if (!navigator.onLine) {
       await saveOffline(payload);
       alert("Offline: submission saved");
@@ -2887,7 +2818,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // const res = await fetch("/api/submit", {\\\\\\\\\\\\\\\\\\\\\>>>>>>>>>>>><<<<<<<<<<<<<>/..........
       const res = await fetch(`${API_BASE}/api/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2896,7 +2826,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!res.ok) throw new Error("API not available");
 
-      // ✅ SUCCESS (future)
+      // ✅ SUCCESS
       await clearDraft();
       alert("Form submitted successfully");
 
