@@ -119,13 +119,39 @@ async function getOfflineData() {
   });
 }
 
-async function clearOfflineData() {
+// clearOfflineData was removed to prevent accidental data loss during sync. Individually delete records instead.
+// ================= OFFLINE SUBMISSION HELPERS =================
+async function loadOfflineSubmissions() {
+  const dbRef = await openDB();
+  if (!dbRef) return [];
+
+  return new Promise(resolve => {
+    const tx = dbRef.transaction(SUBMIT_STORE, "readonly");
+    const store = tx.objectStore(SUBMIT_STORE);
+    const req = store.openCursor();
+    const results = [];
+
+    req.onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) {
+        // Include the auto-generated ID in the result object
+        results.push({ ...cursor.value, id: cursor.key });
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function removeOfflineSubmission(id) {
   const dbRef = await openDB();
   if (!dbRef) return;
 
   return new Promise(resolve => {
     const tx = dbRef.transaction(SUBMIT_STORE, "readwrite");
-    tx.objectStore(SUBMIT_STORE).clear();
+    tx.objectStore(SUBMIT_STORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => resolve();
   });

@@ -5,6 +5,9 @@ let realAadhaar = "";
 let realBankAccount = "";
 let isRestoring = false;
 let autosaveActivated = false;
+let maritalStatus, marriageDate, childrenCount, prolongedIllness, illnessName, illnessDuration;
+let steps = [], stepperSteps = [], sidebarItems = [], currentStep = 0;
+const API_BASE = "https://offlineform.onrender.com";
 
 window.debouncedSaveDraft = function () {
   console.warn("debouncedSaveDraft called before initialization");
@@ -15,10 +18,6 @@ function getCandidateFullName() {
   const ln = document.getElementById("lastName")?.value || "";
   return `${fn} ${ln}`.trim();
 }
-/* =========================================================
-  GLOBAL HELPERS
-========================================================= */
-const API_BASE = "https://offlineform.onrender.com";
 window.addEventListener("online", () => {
   isOnline = true;
   console.log("Back online");
@@ -217,11 +216,11 @@ function restoreLanguageRows(fields) {
   const tbody = document.querySelector("#languageTable tbody");
   if (!tbody || !fields) return;
 
-  // Clear all rows first
-  tbody.innerHTML = "";
+  // Do NOT clear the tbody, keep English/Hindi
+  // Instead, determine how many rows currently exist
+  const existingRows = tbody.querySelectorAll("tr").length;
 
   let maxIndex = -1;
-
   Object.keys(fields).forEach(key => {
     const match = key.match(/^languages\[(\d+)\]/);
     if (match) {
@@ -229,9 +228,8 @@ function restoreLanguageRows(fields) {
     }
   });
 
-  if (maxIndex < 0) return;
-
-  for (let i = 0; i <= maxIndex; i++) {
+  // Only add extra rows if maxIndex >= current count
+  for (let i = existingRows; i <= maxIndex; i++) {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
@@ -381,30 +379,30 @@ function isYear(value) {
 async function syncOfflineSubmissions() {
   if (!navigator.onLine) return;
 
-  const queue = await getOfflineData();
-  if (!queue.length) return;
+  const pending = await loadOfflineSubmissions();
+  if (!pending?.length) return;
 
-  for (const item of queue) {
+  console.log(`Syncing ${pending.length} offline submissions...`);
+
+  for (const payload of pending) {
     try {
-      const res = await fetch(
-        `${API_BASE}/api/drafts?mobile=${encodeURIComponent(item.mobile)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item)
-        }
-      );
-      if (!res.ok) throw new Error("Upload failed");
-    } catch {
-      console.warn("Will retry later");
-      return; // stop but keep offline data
+      const res = await fetch(`${API_BASE}/api/candidates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        await removeOfflineSubmission(payload.id);
+      }
+    } catch (e) {
+      console.warn("Sync failed for one entry", e);
     }
   }
-
-  // ✅ only clear after ALL succeed
-  await clearOfflineData();
-  console.log("All offline submissions synced");
+  console.log("Offline sync completed");
 }
+
+// Attach sync to online event (Combined with the listener at the top)
 
 const isFutureDate = d => d && new Date(d) > new Date();
 const minLen = (v, l) => v && v.trim().length >= l;
@@ -628,7 +626,7 @@ function updateSidebarUI() {
 // Single source of truth for step transitions
 function showStep(index) {
   if (index < 0 || index >= (steps?.length || 0)) return;
-  
+
   // 🔥 THIS LINE IS MANDATORY FOR SYNC
   currentStep = index;
 
@@ -931,15 +929,8 @@ function validateStep3Languages(silent = false) {
 
 
 /* =========================================================
-  MAIN
-========================================================= */
-/* =========================================================
   MAIN STATE & INITIALIZATION
 ========================================================= */
-let steps = [];
-let stepperSteps = [];
-let sidebarItems = [];
-let currentStep = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
   steps = document.querySelectorAll(".form-step");
@@ -1396,7 +1387,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ================= ERROR HELPERS ================= */
   function clearStepErrors(step) {
-    step?.querySelectorAll(".input-error")?.forEach(e => 
+    step?.querySelectorAll(".input-error")?.forEach(e =>
       e.classList.remove("input-error")
     );
     step?.querySelectorAll(".error-msg")?.forEach(e => e.remove());
@@ -1603,12 +1594,14 @@ document.addEventListener("DOMContentLoaded", () => {
   ========================================================= */
   const dobInput = document.getElementById("dob");
   const ageInput = document.getElementById("age");
-  const maritalStatus = document.getElementById("maritalStatus");
-  const marriageDate = document.getElementById("marriageDate");
-  const childrenCount = document.getElementById("childrenCount");
-  const prolongedIllness = document.getElementById("illness");
-  const illnessName = document.getElementById("illnessName");
-  const illnessDuration = document.getElementById("illnessDuration");
+
+  // Assign to higher-scope variables
+  maritalStatus = document.getElementById("maritalStatus");
+  marriageDate = document.getElementById("marriageDate");
+  childrenCount = document.getElementById("childrenCount");
+  prolongedIllness = document.getElementById("illness");
+  illnessName = document.getElementById("illnessName");
+  illnessDuration = document.getElementById("illnessDuration");
   const savedEmail =
     localStorage.getItem("email") || sessionStorage.getItem("email");
 
@@ -1780,10 +1773,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!illnessDuration?.value.trim()) {
         showError(illnessDuration, "Duration required", silent);
         ok = false;
-      }
-
-      if (!prolongedIllness.value) {
-        showError(prolongedIllness, "Select illness status", silent);
       }
 
     }
@@ -2073,254 +2062,254 @@ document.addEventListener("DOMContentLoaded", () => {
   //   });
   // }
 
-function validateStep3(silent = false) {
-  if (isRestoring) return true; // ✅ Skip
-  const step = steps[2];
-  if (!step) return true;
+  function validateStep3(silent = false) {
+    if (isRestoring) return true; // ✅ Skip
+    const step = steps[2];
+    if (!step) return true;
 
-  if (!silent) clearStepErrors(step);
+    if (!silent) clearStepErrors(step);
 
-  let ok = true;
-  let firstError = null;
+    let ok = true;
+    let firstError = null;
 
-  /* ======================================================
-     1️⃣ GRADUATION VALIDATION
-  ====================================================== */
+    /* ======================================================
+       1️⃣ GRADUATION VALIDATION
+    ====================================================== */
 
-  const gradRows = document.querySelectorAll(
-    ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
-  );
+    const gradRows = document.querySelectorAll(
+      ".graduation-wrapper table tbody tr, #extraGraduations table tbody tr"
+    );
 
-  if (!gradRows.length) {
-    showStepError(step, "At least one education record is required", silent);
-    return false;
-  }
+    if (!gradRows.length) {
+      showStepError(step, "At least one education record is required", silent);
+      return false;
+    }
 
-  gradRows.forEach((row, index) => {
-    const college  = row.querySelector("input[name='grad_college[]']");
-    const board    = row.querySelector("input[name='grad_board[]']");
-    const degree   = row.querySelector("input[name='grad_degree[]']");
-    const stream   = row.querySelector("input[name='grad_stream[]']");
-    const joining  = row.querySelector("input[name='grad_joining[]']");
-    const leaving  = row.querySelector("input[name='grad_leaving[]']");
-    const percent  = row.querySelector("input[name='grad_aggregate[]']");
+    gradRows.forEach((row, index) => {
+      const college = row.querySelector("input[name='grad_college[]']");
+      const board = row.querySelector("input[name='grad_board[]']");
+      const degree = row.querySelector("input[name='grad_degree[]']");
+      const stream = row.querySelector("input[name='grad_stream[]']");
+      const joining = row.querySelector("input[name='grad_joining[]']");
+      const leaving = row.querySelector("input[name='grad_leaving[]']");
+      const percent = row.querySelector("input[name='grad_aggregate[]']");
 
-    const isFirstRow = index === 0;
+      const isFirstRow = index === 0;
 
-    const anyFilled = [
-      college, board, degree, stream,
-      joining, leaving, percent
-    ].some(el => el && el.value.trim() !== "");
+      const anyFilled = [
+        college, board, degree, stream,
+        joining, leaving, percent
+      ].some(el => el && el.value.trim() !== "");
 
-    // First row mandatory OR partially filled row must be complete
-    if (isFirstRow || anyFilled) {
+      // First row mandatory OR partially filled row must be complete
+      if (isFirstRow || anyFilled) {
 
-      [college, board, degree, stream, joining, leaving, percent]
-        .forEach(el => {
-          if (!el || !el.value.trim()) {
-            markError(el, "Required");
-            if (!firstError) firstError = el;
-            ok = false;
-          }
-        });
+        [college, board, degree, stream, joining, leaving, percent]
+          .forEach(el => {
+            if (!el || !el.value.trim()) {
+              markError(el, "Required");
+              if (!firstError) firstError = el;
+              ok = false;
+            }
+          });
 
-      // Joining year
-      if (joining?.value && !/^\d{4}$/.test(joining.value)) {
-        markError(joining, "Enter valid 4-digit year");
-        if (!firstError) firstError = joining;
-        ok = false;
-      }
+        // Joining year
+        if (joining?.value && !/^\d{4}$/.test(joining.value)) {
+          markError(joining, "Enter valid 4-digit year");
+          if (!firstError) firstError = joining;
+          ok = false;
+        }
 
-      // Leaving year
-      if (leaving?.value && !/^\d{4}$/.test(leaving.value)) {
-        markError(leaving, "Enter valid 4-digit year");
-        if (!firstError) firstError = leaving;
-        ok = false;
-      }
-
-      // Year comparison
-      if (joining?.value && leaving?.value) {
-        if (parseInt(leaving.value) <= parseInt(joining.value)) {
-          markError(leaving, "Leaving year must be after joining year");
+        // Leaving year
+        if (leaving?.value && !/^\d{4}$/.test(leaving.value)) {
+          markError(leaving, "Enter valid 4-digit year");
           if (!firstError) firstError = leaving;
           ok = false;
         }
-      }
 
-      // Percentage validation
-      if (percent?.value) {
-        const p = parseFloat(percent.value);
-        if (isNaN(p) || p < 0 || p > 100) {
-          markError(percent, "Percentage must be 0–100");
-          if (!firstError) firstError = percent;
-          ok = false;
+        // Year comparison
+        if (joining?.value && leaving?.value) {
+          if (parseInt(leaving.value) <= parseInt(joining.value)) {
+            markError(leaving, "Leaving year must be after joining year");
+            if (!firstError) firstError = leaving;
+            ok = false;
+          }
+        }
+
+        // Percentage validation
+        if (percent?.value) {
+          const p = parseFloat(percent.value);
+          if (isNaN(p) || p < 0 || p > 100) {
+            markError(percent, "Percentage must be 0–100");
+            if (!firstError) firstError = percent;
+            ok = false;
+          }
         }
       }
-    }
-  });
+    });
 
-  /* ======================================================
-     1.1️⃣ INTERMEDIATE VALIDATION
-  ====================================================== */
+    /* ======================================================
+       1.1️⃣ INTERMEDIATE VALIDATION
+    ====================================================== */
 
-  const interFields = [
-    "inter_college", "inter_board", "inter_stream",
-    "inter_joining", "inter_leaving", "inter_aggregate"
-  ];
+    const interFields = [
+      "inter_college", "inter_board", "inter_stream",
+      "inter_joining", "inter_leaving", "inter_aggregate"
+    ];
 
-  interFields.forEach(name => {
-    const el = document.querySelector(`input[name="${name}"]`);
-    if (!el) return;
-    if (!el.value.trim()) {
-      markError(el, "Required");
-      if (!firstError) firstError = el;
-      ok = false;
-    } else {
-      // Numerical / Year specific checks
-      if (name.includes("joining") || name.includes("leaving")) {
-        if (!/^\d{4}$/.test(el.value)) {
-          markError(el, "Enter valid 4-digit year");
-          if (!firstError) firstError = el;
-          ok = false;
+    interFields.forEach(name => {
+      const el = document.querySelector(`input[name="${name}"]`);
+      if (!el) return;
+      if (!el.value.trim()) {
+        markError(el, "Required");
+        if (!firstError) firstError = el;
+        ok = false;
+      } else {
+        // Numerical / Year specific checks
+        if (name.includes("joining") || name.includes("leaving")) {
+          if (!/^\d{4}$/.test(el.value)) {
+            markError(el, "Enter valid 4-digit year");
+            if (!firstError) firstError = el;
+            ok = false;
+          }
+        }
+        if (name.includes("aggregate")) {
+          const p = parseFloat(el.value);
+          if (isNaN(p) || p < 0 || p > 100) {
+            markError(el, "Percentage 0–100");
+            if (!firstError) firstError = el;
+            ok = false;
+          }
         }
       }
-      if (name.includes("aggregate")) {
-        const p = parseFloat(el.value);
-        if (isNaN(p) || p < 0 || p > 100) {
-          markError(el, "Percentage 0–100");
-          if (!firstError) firstError = el;
-          ok = false;
-        }
+    });
+
+    // Intermediate Year Comparison
+    const interJoin = document.querySelector('input[name="inter_joining"]');
+    const interLeave = document.querySelector('input[name="inter_leaving"]');
+    if (interJoin?.value && interLeave?.value) {
+      if (parseInt(interLeave.value) <= parseInt(interJoin.value)) {
+        markError(interLeave, "Leaving year must be after joining year");
+        if (!firstError) firstError = interLeave;
+        ok = false;
       }
     }
-  });
 
-  // Intermediate Year Comparison
-  const interJoin = document.querySelector('input[name="inter_joining"]');
-  const interLeave = document.querySelector('input[name="inter_leaving"]');
-  if (interJoin?.value && interLeave?.value) {
-    if (parseInt(interLeave.value) <= parseInt(interJoin.value)) {
-      markError(interLeave, "Leaving year must be after joining year");
-      if (!firstError) firstError = interLeave;
-      ok = false;
-    }
-  }
+    /* ======================================================
+       1.2️⃣ 10TH / SCHOOLING VALIDATION
+    ====================================================== */
 
-  /* ======================================================
-     1.2️⃣ 10TH / SCHOOLING VALIDATION
-  ====================================================== */
+    const schoolFields = [
+      "school_name", "school_board", "school_joining",
+      "school_leaving", "school_aggregate"
+    ];
 
-  const schoolFields = [
-    "school_name", "school_board", "school_joining",
-    "school_leaving", "school_aggregate"
-  ];
-
-  schoolFields.forEach(name => {
-    const el = document.querySelector(`input[name="${name}"]`);
-    if (!el) return;
-    if (!el.value.trim()) {
-      markError(el, "Required");
-      if (!firstError) firstError = el;
-      ok = false;
-    } else {
-      if (name.includes("joining") || name.includes("leaving")) {
-        if (!/^\d{4}$/.test(el.value)) {
-          markError(el, "Enter valid 4-digit year");
-          if (!firstError) firstError = el;
-          ok = false;
+    schoolFields.forEach(name => {
+      const el = document.querySelector(`input[name="${name}"]`);
+      if (!el) return;
+      if (!el.value.trim()) {
+        markError(el, "Required");
+        if (!firstError) firstError = el;
+        ok = false;
+      } else {
+        if (name.includes("joining") || name.includes("leaving")) {
+          if (!/^\d{4}$/.test(el.value)) {
+            markError(el, "Enter valid 4-digit year");
+            if (!firstError) firstError = el;
+            ok = false;
+          }
+        }
+        if (name.includes("aggregate")) {
+          const p = parseFloat(el.value);
+          if (isNaN(p) || p < 0 || p > 100) {
+            markError(el, "Percentage 0–100");
+            if (!firstError) firstError = el;
+            ok = false;
+          }
         }
       }
-      if (name.includes("aggregate")) {
-        const p = parseFloat(el.value);
-        if (isNaN(p) || p < 0 || p > 100) {
-          markError(el, "Percentage 0–100");
-          if (!firstError) firstError = el;
-          ok = false;
-        }
+    });
+
+    // School Year Comparison
+    const schJoin = document.querySelector('input[name="school_joining"]');
+    const schLeave = document.querySelector('input[name="school_leaving"]');
+    if (schJoin?.value && schLeave?.value) {
+      if (parseInt(schLeave.value) <= parseInt(schJoin.value)) {
+        markError(schLeave, "Leaving year must be after joining year");
+        if (!firstError) firstError = schLeave;
+        ok = false;
       }
     }
-  });
 
-  // School Year Comparison
-  const schJoin = document.querySelector('input[name="school_joining"]');
-  const schLeave = document.querySelector('input[name="school_leaving"]');
-  if (schJoin?.value && schLeave?.value) {
-    if (parseInt(schLeave.value) <= parseInt(schJoin.value)) {
-      markError(schLeave, "Leaving year must be after joining year");
-      if (!firstError) firstError = schLeave;
-      ok = false;
-    }
-  }
+    /* ======================================================
+       2️⃣ LANGUAGE VALIDATION
+    ====================================================== */
 
-  /* ======================================================
-     2️⃣ LANGUAGE VALIDATION
-  ====================================================== */
+    const languageRows = document.querySelectorAll("#languageTable tbody tr");
 
-  const languageRows = document.querySelectorAll("#languageTable tbody tr");
+    languageRows.forEach(row => {
+      const langInput = row.querySelector("input[type='text']");
+      const speak = row.querySelector("input[name*='speak']");
+      const read = row.querySelector("input[name*='read']");
+      const write = row.querySelector("input[name*='write']");
 
-  languageRows.forEach(row => {
-    const langInput = row.querySelector("input[type='text']");
-    const speak = row.querySelector("input[name*='speak']");
-    const read  = row.querySelector("input[name*='read']");
-    const write = row.querySelector("input[name*='write']");
+      const anySkill = speak?.checked || read?.checked || write?.checked;
 
-    const anySkill = speak?.checked || read?.checked || write?.checked;
+      if (!langInput.value.trim() && !anySkill) return;
 
-    if (!langInput.value.trim() && !anySkill) return;
+      if (!langInput.value.trim()) {
+        markError(langInput, "Language required");
+        if (!firstError) firstError = langInput;
+        ok = false;
+      }
 
-    if (!langInput.value.trim()) {
-      markError(langInput, "Language required");
-      if (!firstError) firstError = langInput;
-      ok = false;
-    }
+      if (!anySkill) {
+        markError(langInput, "Select at least one skill");
+        if (!firstError) firstError = langInput;
+        ok = false;
+      }
+    });
 
-    if (!anySkill) {
-      markError(langInput, "Select at least one skill");
-      if (!firstError) firstError = langInput;
-      ok = false;
-    }
-  });
+    /* ======================================================
+       3️⃣ MOTHER TONGUE VALIDATION
+    ====================================================== */
 
-  /* ======================================================
-     3️⃣ MOTHER TONGUE VALIDATION
-  ====================================================== */
-
-  const motherChecked = document.querySelectorAll(
-    'input[name="motherTongue"]:checked'
-  );
-
-  if (motherChecked.length !== 1) {
-    document
-      .querySelectorAll('input[name="motherTongue"]')
-      .forEach(r => r.closest("td")?.classList.add("input-error"));
-
-    if (!firstError) {
-      firstError = document.querySelector('input[name="motherTongue"]');
-    }
-
-    ok = false;
-  }
-
-  /* ======================================================
-     FINAL ERROR HANDLING
-  ====================================================== */
-
-  if (!ok && !silent) {
-    showSummaryError(
-      step,
-      "Please correct the highlighted errors before continuing"
+    const motherChecked = document.querySelectorAll(
+      'input[name="motherTongue"]:checked'
     );
 
-    if (firstError) {
-      firstError.scrollIntoView({ behavior: "smooth", block: "center" });
-      firstError.focus();
-    } else {
-      shakeCurrentStep();
-    }
-  }
+    if (motherChecked.length !== 1) {
+      document
+        .querySelectorAll('input[name="motherTongue"]')
+        .forEach(r => r.closest("td")?.classList.add("input-error"));
 
-  return ok;
-}
+      if (!firstError) {
+        firstError = document.querySelector('input[name="motherTongue"]');
+      }
+
+      ok = false;
+    }
+
+    /* ======================================================
+       FINAL ERROR HANDLING
+    ====================================================== */
+
+    if (!ok && !silent) {
+      showSummaryError(
+        step,
+        "Please correct the highlighted errors before continuing"
+      );
+
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstError.focus();
+      } else {
+        shakeCurrentStep();
+      }
+    }
+
+    return ok;
+  }
 
 
   /* =========================================================
@@ -2933,30 +2922,13 @@ function validateStep3(silent = false) {
         dobInput.dispatchEvent(new Event("change"));
       }
     });
+
+    // Initial sync check
+    if (navigator.onLine) {
+      syncOfflineSubmissions();
+    }
   })();
 
-  /* ================= ONLINE SYNC ================= */
-  window.addEventListener("online", async () => {
-    console.log("Back online – sync triggered");
-    const pending = await loadOfflineSubmissions(); // your IndexedDB helper
-    if (!pending?.length) return;
-
-    for (const payload of pending) {
-      try {
-        const res = await fetch(`${API_BASE}/api/candidates`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          await removeOfflineSubmission(payload.id);
-        }
-      } catch (e) {
-        console.warn("Sync failed for one entry", e);
-      }
-    }
-  });
   updateUI();
   updateNextVisualState();
 });

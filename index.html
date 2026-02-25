@@ -533,22 +533,24 @@
               <tbody>
                 <!-- Fixed English -->
                 <tr>
-                  <td>English</td>
-                  <td><input type="checkbox" name="lang_english_speak"></td>
-                  <td><input type="checkbox" name="lang_english_read"></td>
-                  <td><input type="checkbox" name="lang_english_write"></td>
-                  <td><input type="radio" name="motherTongue" value="english">
+                  <td>
+                    <input type="text" name="languages[0][name]" value="English" readonly>
                   </td>
+                  <td><input type="checkbox" name="languages[0][speak]"></td>
+                  <td><input type="checkbox" name="languages[0][read]"></td>
+                  <td><input type="checkbox" name="languages[0][write]"></td>
+                  <td><input type="radio" name="motherTongue" value="0"></td>
                 </tr>
 
                 <!-- Fixed Hindi -->
                 <tr>
-                  <td>Hindi</td>
-                  <td><input type="checkbox" name="lang_hindi_speak"></td>
-                  <td><input type="checkbox" name="lang_hindi_read"></td>
-                  <td><input type="checkbox" name="lang_hindi_write"></td>
-                  <td><input type="radio" name="motherTongue" value="hindi">
+                  <td>
+                    <input type="text" name="languages[1][name]" value="Hindi" readonly>
                   </td>
+                  <td><input type="checkbox" name="languages[1][speak]"></td>
+                  <td><input type="checkbox" name="languages[1][read]"></td>
+                  <td><input type="checkbox" name="languages[1][write]"></td>
+                  <td><input type="radio" name="motherTongue" value="1"></td>
                 </tr>
               </tbody>
             </table>

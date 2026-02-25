@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v6";
+const CACHE_NAME = "offline-form-v7";
 
 const FILES = [
   "./",
@@ -42,6 +42,13 @@ self.addEventListener("activate", event => {
 
 /* ================= FETCH ================= */
 self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+
+  // 🚫 Never cache API calls
+  if (url.pathname.startsWith("/api")) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(res => res || fetch(event.request))
@@ -66,18 +73,35 @@ async function syncForms() {
       const db = req.result;
       const tx = db.transaction("submissions", "readwrite");
       const store = tx.objectStore("submissions");
+      const pending = [];
 
-      const getAll = store.getAll();
-      getAll.onsuccess = async () => {
-        for (const record of getAll.result) {
-          await fetch("/api/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(record)
-          });
+      store.openCursor().onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+          pending.push({ ...cursor.value, id: cursor.key });
+          cursor.continue();
+        } else {
+          (async () => {
+            for (const record of pending) {
+              try {
+                const response = await fetch("https://offlineform.onrender.com/api/candidates", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(record)
+                });
+
+                if (response.ok) {
+                  // Open a new transaction for deletion to avoid closure issues
+                  const deleteTx = db.transaction("submissions", "readwrite");
+                  deleteTx.objectStore("submissions").delete(record.id);
+                }
+              } catch (e) {
+                console.error("SW Sync failed for record", e);
+              }
+            }
+            resolve();
+          })();
         }
-        store.clear();
-        resolve();
       };
     };
   });
