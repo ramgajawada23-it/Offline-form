@@ -12,8 +12,10 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 
   error.innerText = "";
 
+  const API_BASE = "https://offlineform.onrender.com";
+
   try {
-    const res = await fetch("/api/login", {
+    const res = await fetch(`${API_BASE}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile })

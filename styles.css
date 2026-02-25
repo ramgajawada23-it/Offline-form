@@ -96,7 +96,8 @@ body {
 /* Error message space is reserved */
 
 .error-text {
-  position: static;     /* IMPORTANT */
+  position: static;
+  /* IMPORTANT */
   display: block;
   margin-top: 4px;
   font-size: 12px;
@@ -426,8 +427,21 @@ button:disabled {
 
 input.error,
 select.error,
-textarea.error {
-  border-color: #be2525;
+textarea.error,
+.input-error {
+  border: 1.5px solid #d32f2f !important;
+  border-color: #d32f2f !important;
+  background-color: rgba(211, 47, 47, 0.03) !important;
+}
+
+.error-msg,
+.error-text {
+  color: #d32f2f !important;
+  text-shadow: none !important;
+  font-size: 13px !important;
+  margin-top: 5px !important;
+  font-weight: 600 !important;
+  display: block !important;
 }
 
 .form-step.shake {

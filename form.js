@@ -144,6 +144,11 @@ async function restoreDraftState(data) {
     toggleMaritalFields();
     toggleExperienceDependentSections();
     validateStep3Languages(true);
+    syncMediclaimVisibility();
+    syncStep3Conditionals();
+    syncInterviewVisibility();
+    syncAllFamilyRows();
+    updateFamilyRelationshipOptions();
 
     if (Array.isArray(data.educationRows)) {
       restoreEducationRows(data.educationRows);
@@ -538,7 +543,7 @@ function updateFamilyRelationshipOptions() {
   });
 }
 
-function setupMediclaimRequiredLogic() {
+function syncMediclaimVisibility() {
   const yes = document.getElementById("mediclaimYes");
   const no = document.getElementById("mediclaimNo");
   const details = document.getElementById("mediclaimDetails");
@@ -546,47 +551,108 @@ function setupMediclaimRequiredLogic() {
 
   if (!yes || !no || !details || !hidden) return;
 
-  // all inputs inside mediclaim section
+  const isYes = hidden.value === "Yes";
+  const isNo = hidden.value === "No";
+
+  details.style.display = isYes ? "block" : "none";
+  yes.checked = isYes;
+  no.checked = isNo;
+
+  // Toggle required attribute for inputs inside details
   const inputs = details.querySelectorAll("input, select");
+  inputs.forEach(el => {
+    if (!el.hasAttribute("readonly")) {
+      el.required = isYes;
+    }
+  });
+}
 
-  function toggleRequired(isYes) {
-    details.style.display = isYes ? "block" : "none";
-    hidden.value = isYes ? "Yes" : "No";
+function setupMediclaimRequiredLogic() {
+  const yes = document.getElementById("mediclaimYes");
+  const no = document.getElementById("mediclaimNo");
+  const hidden = document.getElementById("mediclaimConsent");
 
-    inputs.forEach(el => {
-      // do NOT force readonly auto‑filled fields
-      if (!el.hasAttribute("readonly")) {
-        el.required = isYes;
-      }
-    });
-  }
+  if (!yes || !no || !hidden) return;
 
-  yes.addEventListener("change", () => toggleRequired(true));
-  no.addEventListener("change", () => toggleRequired(false));
+  yes.addEventListener("change", () => {
+    hidden.value = "Yes";
+    syncMediclaimVisibility();
+  });
 
-  // restore state (offline / back navigation)
-  if (hidden.value === "Yes") {
-    yes.checked = true;
-    toggleRequired(true);
-  } else if (hidden.value === "No") {
-    no.checked = true;
-    toggleRequired(false);
+  no.addEventListener("change", () => {
+    hidden.value = "No";
+    syncMediclaimVisibility();
+  });
+
+  // Initial sync
+  syncMediclaimVisibility();
+}
+
+function syncStep3Conditionals() {
+  const step3 = steps[2];
+  if (!step3) return;
+  step3.querySelectorAll("textarea.conditional-details").forEach(textarea => {
+    const select = textarea.previousElementSibling;
+    if (select && select.tagName === "SELECT") {
+      textarea.style.display = (select.value === "Yes") ? "block" : "none";
+    }
+  });
+}
+
+function setupStep3Conditionals() {
+  const step3 = steps[2];
+  if (!step3) return;
+  step3.querySelectorAll("textarea.conditional-details").forEach(textarea => {
+    const select = textarea.previousElementSibling;
+    if (select && select.tagName === "SELECT") {
+      select.addEventListener("change", syncStep3Conditionals);
+    }
+  });
+  syncStep3Conditionals();
+}
+
+function syncInterviewVisibility() {
+  const interviewDropdown = document.getElementById("interviewedBefore");
+  const interviewDetails = document.getElementById("interviewDetails");
+  if (!interviewDropdown || !interviewDetails) return;
+
+  if (interviewDropdown.value.toLowerCase() === "yes") {
+    interviewDetails.style.display = "block";
   } else {
-    details.style.display = "none";
+    interviewDetails.style.display = "none";
+    if (!isRestoring) {
+      interviewDetails.querySelectorAll("input").forEach(input => {
+        input.value = "";
+      });
+    }
   }
+}
+
+function setupInterviewLogic() {
+  const interviewDropdown = document.getElementById("interviewedBefore");
+  if (!interviewDropdown) return;
+  interviewDropdown.addEventListener("change", syncInterviewVisibility);
+  syncInterviewVisibility();
+}
+
+function syncAllFamilyRows() {
+  document.querySelectorAll("#familyTableBody tr").forEach(syncFamilyRow);
 }
 
 function fillMediclaimEmployeeDetails() {
   const map = {
-    "firstName lastName": () =>
-      `${firstName.value || ""} ${lastName.value || ""}`.trim(),
+    "firstName lastName": () => {
+      const fn = document.getElementById("firstName")?.value || "";
+      const ln = document.getElementById("lastName")?.value || "";
+      return `${fn} ${ln}`.trim();
+    },
     dob: () => {
-      const val = dob.value;
+      const val = document.getElementById("dob")?.value;
       if (!val) return "";
       const [y, m, d] = val.split("-");
       return `${d}/${m}/${y}`;
     },
-    employeeId: () => employeeId.value,
+    employeeId: () => document.getElementById("employeeId")?.value || "",
     today: () => {
       const now = new Date();
       const d = String(now.getDate()).padStart(2, '0');
@@ -872,9 +938,9 @@ async function loadDraft(mobile) {
 
 function clearError(el) {
   if (!el) return;
-  el.classList.remove("error");
-  const next = el.nextElementSibling;
-  if (next && next.classList.contains("error-text")) next.remove();
+  el.classList.remove("input-error");
+  const msg = el.parentElement?.querySelector(".error-msg");
+  if (msg) msg.remove();
 }
 
 function markError(field, msgText = "This field is required") {
@@ -954,6 +1020,20 @@ document.addEventListener("DOMContentLoaded", () => {
   steps = document.querySelectorAll(".form-step");
   stepperSteps = document.querySelectorAll(".stepper-step");
   sidebarItems = document.querySelectorAll(".step-menu li");
+
+  // Stepper click
+  stepperSteps.forEach((circle, index) => {
+    circle.addEventListener("click", () => {
+      navigateToStep(index);
+    });
+  });
+
+  // Sidebar click
+  sidebarItems.forEach((item, index) => {
+    item.addEventListener("click", () => {
+      navigateToStep(index);
+    });
+  });
 
   // 🔥 FORCE CLEAN INITIAL STATE
   steps.forEach(step => step.classList.remove("active"));
@@ -1155,29 +1235,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (formStatus === "SUBMITTED") {
     document.body.innerHTML = `
-    <div class="already-filled">
-      <h2>You already filled the form</h2>
-      <button id="newFormBtn">Fill another form</button>
+    <div class="user-submitted-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f9;">
+      <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 500px;">
+        <div style="font-size: 50px; color: #4CAF50; margin-bottom: 20px;">✓</div>
+        <h2 style="color: #333; margin-bottom: 15px;">You have already submitted the form</h2>
+        <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">Your application has been received and is currently being processed. You cannot edit a submitted form.</p>
+        <button onclick="window.location.href='login.html'" style="background: #47749b; color: white; border: none; padding: 12px 30px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.2s;">Back to Login</button>
+      </div>
     </div>`;
-
-    document.getElementById("newFormBtn").onclick = async () => {
-      await fetch("/api/new-form", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mobile: sessionStorage.getItem("loggedInMobile")
-        })
-      });
-
-      sessionStorage.setItem("formStatus", "NEW");
-      sessionStorage.removeItem("serverDraft");
-      clearDraft();
-      window.location.reload();
-    };
     return; // ⛔ Stop form JS execution
   }
 
   setupMediclaimRequiredLogic();
+  setupStep3Conditionals();
+  setupInterviewLogic();
 
   document
     .querySelectorAll("#familyTableBody tr")
@@ -1220,11 +1291,6 @@ document.addEventListener("DOMContentLoaded", () => {
   window.debouncedSaveDraft = debouncedSaveDraft;
 
 
-
-
-  function syncAllFamilyRows() {
-    document.querySelectorAll("#familyTableBody tr").forEach(syncFamilyRow);
-  }
 
   document.getElementById("fatherName")
     ?.addEventListener("input", syncAllFamilyRows);
@@ -1305,13 +1371,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   mainForm.addEventListener("input", e => {
     const el = e.target;
+    // Clear error on input
+    clearError(el);
+
     if (
       el.placeholder === "Joining Year" ||
       el.placeholder === "Leaving Year"
     ) {
       const yearPattern = /^\d{4}$/;
       if (yearPattern.test(el.value)) {
-        clearError(el); // ✅ remove error + text
+        clearError(el);
       }
     }
   });
@@ -1353,28 +1422,6 @@ document.addEventListener("DOMContentLoaded", () => {
     allowOnlyDigits(accountInput, 18);
   }
 
-  const interviewDropdown = document.getElementById("interviewedBefore");
-  const interviewDetails = document.getElementById("interviewDetails");
-
-  if (interviewDropdown && interviewDetails) {
-
-    interviewDropdown.addEventListener("change", function () {
-
-      if (this.value.toLowerCase() === "yes") {
-        interviewDetails.style.display = "block";
-      } else {
-        interviewDetails.style.display = "none";
-
-        // Optional: clear values when hidden
-        interviewDetails.querySelectorAll("input").forEach(input => {
-          input.value = "";
-        });
-      }
-
-    });
-    interviewDropdown.dispatchEvent(new Event("change"));
-  }
-
   /* ================= ERROR HELPERS ================= */
   function clearStepErrors(step) {
     step?.querySelectorAll(".input-error")?.forEach(e =>
@@ -1395,8 +1442,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function focusFirstError(step) {
     const el = step?.querySelector(".input-error");
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    el?.focus();
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus();
+    }
   }
 
   function shakeCurrentStep() {
@@ -1415,27 +1464,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("annualTotal")?.addEventListener("keydown", e => {
     e.preventDefault();
   });
-
-  // ================= STEP‑3 CONDITIONAL TEXTAREAS =================
-  const step3 = steps[2];
-  step3
-    .querySelectorAll("textarea.conditional-details")
-    .forEach(textarea => {
-      const select = textarea.previousElementSibling;
-
-      function syncTextareaVisibility() {
-        if (select.value === "Yes") {
-          textarea.style.display = "block";
-        } else {
-          textarea.style.display = "none";
-          textarea.value = "";
-          clearError(textarea);
-        }
-      }
-
-      select.addEventListener("change", syncTextareaVisibility);
-      syncTextareaVisibility();
-    });
 
   document.querySelectorAll(".mobile-input").forEach(input => {
     input.addEventListener("input", e => {
@@ -2200,9 +2228,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!firstError) firstError = langInput;
         ok = false;
       }
-
       if (!anySkill) {
-        markError(langInput, "Select at least one skill");
+        markError(langInput, "Select any of them");
         if (!firstError) firstError = langInput;
         ok = false;
       }
@@ -2227,6 +2254,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
       ok = false;
     }
+
+    /* ======================================================
+       4️⃣ STRENGTHS / WEAKNESSES / VALUES VALIDATION
+    ====================================================== */
+
+    ["strengths", "Weaknesses", "Values"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!el.value.trim()) {
+        markError(el, "This field is required");
+        if (!firstError) firstError = el;
+        ok = false;
+      }
+    });
+
+    /* ======================================================
+       5️⃣ PROFESSIONAL BODY & HONORS VALIDATION
+    ====================================================== */
+
+    ["memberOfProfessionalBody", "specialHonors"].forEach(name => {
+      const el = document.querySelector(`select[name="${name}"]`);
+      if (!el) return;
+
+      if (!el.value) {
+        markError(el, "Please select an option");
+        if (!firstError) firstError = el;
+        ok = false;
+      } else if (el.value === "Yes") {
+        const details = el.parentElement.querySelector("textarea");
+        if (details && !details.value.trim()) {
+          markError(details, "Details are required if YES is selected");
+          if (!firstError) firstError = details;
+          ok = false;
+        }
+      }
+    });
 
     /* ======================================================
        FINAL ERROR HANDLING
@@ -2454,7 +2517,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ok = false;
     }
 
-    if (interviewDropdown?.value === "yes") {
+    if (interviewDropdown?.value === "Yes") {
 
       if (!interviewDate?.value) {
         showError(interviewDate, "Interview date is required", silent);
@@ -2747,14 +2810,12 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ✅ Clear field error immediately when user corrects it */
   mainForm.addEventListener("input", e => {
     const el = e.target;
-    if (!el.classList.contains("error")) return;
+    if (!el.classList.contains("input-error")) return;
 
-    el.classList.remove("error");
+    el.classList.remove("input-error");
 
-    const next = el.nextElementSibling;
-    if (next && next.classList.contains("error-text")) {
-      next.remove();
-    }
+    const msg = el.parentElement?.querySelector(".error-msg");
+    if (msg) msg.remove();
 
     updateNextVisualState();
   });
@@ -2828,7 +2889,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ✅ SUCCESS
       await clearDraft();
-      alert("Form submitted successfully");
+
+      // Update status for immediate transition
+      sessionStorage.setItem("formStatus", "SUBMITTED");
+
+      alert("Thank you for submitting the form");
+      window.location.href = "login.html";
 
     } catch (err) {
       console.warn("Submit failed, saving offline", err);
