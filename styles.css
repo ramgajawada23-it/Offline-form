@@ -213,8 +213,12 @@ body {
 
 .step-menu li.active {
   background: #47749b;
-  /* #254757; */
-  /* #47749b; */
+  color: white;
+  font-weight: bold;
+}
+
+.step-menu li.completed {
+  color: #000000;
   font-weight: bold;
 }
 
@@ -253,11 +257,24 @@ body {
 .stepper-step.active {
   background: #47749b;
   color: white;
+  border-color: #47749b;
+  box-shadow: 0 0 10px rgba(71, 116, 155, 0.5);
 }
 
 .stepper-step.completed {
   background: #47749b;
+  color: transparent;
+  position: relative;
+}
+
+.stepper-step.completed::after {
+  content: "✓";
   color: white;
+  position: absolute;
+  font-size: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 
@@ -726,17 +743,23 @@ textarea.error,
 
 
 .btn-delete {
-  margin-top: 8px;
-  background: #0c0303;
+  background: #d32f2f;
   color: #fff;
   border: none;
-  padding: 5px 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
+  font-weight: bold;
 }
 
 .btn-delete:hover {
-  opacity: 0.85;
+  background: #b71c1c;
 }
+
+.center .btn-delete {
+  margin-top: 0;
+}
+
 
 .form-step.step-circular {
   background: #ffffff;
@@ -769,14 +792,18 @@ textarea.error,
 
 .signature-row.right {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   align-items: flex-end;
-  gap: 40px;
+  gap: 15px;
   margin-top: 30px;
 }
 
+
 .signature-block {
-  text-align: center;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .signature-img {
@@ -787,8 +814,18 @@ textarea.error,
 }
 
 .date-block {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
+
+.date-block .label {
+  width: auto;
+  margin: 0;
+}
+
+
 
 .line {
   width: 160px;
@@ -797,10 +834,73 @@ textarea.error,
 }
 
 .line.short {
-  width: 120px;
+  width: 80px;
 }
 
 .label {
   font-size: 13px;
   display: block;
 }
+
+/* ================= SIGNATURE UPLOAD ================= */
+.signature-upload-box {
+  display: flex;
+  width: 250px;
+  height: 100px;
+  border: 2px dashed #47749b;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(71, 116, 155, 0.05);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.signature-upload-box:hover {
+  background: rgba(71, 116, 155, 0.1);
+  border-color: #1c486e;
+}
+
+.signature-upload-box .placeholder-text {
+  font-size: 14px;
+  color: #47749b;
+  text-align: center;
+  padding: 10px;
+}
+
+.signature-preview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.signature-upload-container.input-error .signature-upload-box {
+  border: 2px solid #d32f2f !important;
+  background: rgba(211, 47, 47, 0.05);
+}
+
+.right {
+  text-align: right;
+}
+
+.right .signature-upload-box {
+  margin-left: auto;
+}
+
+.right .label {
+  text-align: right;
+  /* If they want it centered under the box, this needs to be different.
+     But assuming they just want same alignment: */
+  width: 250px;
+  margin-left: auto;
+  text-align: center;
+}
+
+.signature-block .signature-upload-box {
+  margin: 0 auto 8px;
+}
+
+

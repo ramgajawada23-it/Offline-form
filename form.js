@@ -149,6 +149,13 @@ async function restoreDraftState(data) {
     syncInterviewVisibility();
     syncAllFamilyRows();
     updateFamilyRelationshipOptions();
+    autoCalculateSalary();
+    reorderFamilyRows();
+
+    // Restore signature previews
+    if (data.fields?.signatureBase64) {
+      updateSignaturePreviews(data.fields.signatureBase64);
+    }
 
     if (Array.isArray(data.educationRows)) {
       restoreEducationRows(data.educationRows);
@@ -372,6 +379,80 @@ function recalculateAge() {
   ageEl.value = age;
 }
 
+function updateSignaturePreviews(b64) {
+  const base64Input = document.getElementById("signatureBase64");
+  const step5Preview = document.getElementById("step5SigPreview");
+  const step6Preview = document.getElementById("step6SigPreview");
+  const step5Box = document.getElementById("step5SigBox");
+  const step6Box = document.getElementById("step6SigBox");
+
+  if (base64Input) base64Input.value = b64 || "";
+
+  if (b64) {
+    if (step5Preview) {
+      step5Preview.src = b64;
+      step5Preview.style.display = "block";
+      if (step5Box) {
+        const placeholder = step5Box.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "none";
+      }
+    }
+    if (step6Preview) {
+      step6Preview.src = b64;
+      step6Preview.style.display = "block";
+      if (step6Box) {
+        const placeholder = step6Box.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "none";
+      }
+    }
+  } else {
+    // Reset if empty
+    if (step5Preview) {
+      step5Preview.src = "";
+      step5Preview.style.display = "none";
+      if (step5Box) {
+        const placeholder = step5Box.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "block";
+      }
+    }
+    if (step6Preview) {
+      step6Preview.src = "";
+      step6Preview.style.display = "none";
+      if (step6Box) {
+        const placeholder = step6Box.querySelector(".placeholder-text");
+        if (placeholder) placeholder.style.display = "block";
+      }
+    }
+  }
+}
+
+function autoCalculateSalary() {
+  const step5 = steps[4];
+  if (!step5) return;
+
+  const rows = step5.querySelectorAll("#salarySection .family-table tbody tr");
+  let a = 0, b = 0, c = 0;
+
+  rows.forEach(row => {
+    const nums = row.querySelectorAll("input[type='number']");
+    if (nums[0]?.value) a += +nums[0].value || 0;
+    if (nums[1]?.value) b += +nums[1].value || 0;
+    if (nums[2]?.value) c += +nums[2].value || 0;
+  });
+
+  const totalA = document.getElementById("totalA");
+  const totalB = document.getElementById("totalB");
+  const totalC = document.getElementById("totalC");
+  const monthly = document.getElementById("monthlyTotal");
+  const annual = document.getElementById("annualTotal");
+
+  if (totalA) totalA.value = a || "";
+  if (totalB) totalB.value = b || "";
+  if (totalC) totalC.value = c || "";
+  if (monthly) monthly.value = (a + b + c) || "";
+  if (annual) annual.value = (a + b + c) ? (a + b + c) * 12 : "";
+}
+
 function isAlphaOnly(value) {
   return /^[A-Za-z\s.]+$/.test(value.trim());
 }
@@ -435,7 +516,11 @@ window.addFamilyRow = () => {
   const index = tbody.children.length;
   const tr = document.createElement("tr");
   tr.innerHTML = `
-      <td>${index + 1}</td>
+      <td class="center">
+        <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
+          <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+        </button>
+      </td>
       <td>
         <select name="family[${index}][relationship]">
           <option value="">Select</option>
@@ -444,6 +529,8 @@ window.addFamilyRow = () => {
           <option>Brother</option>
           <option>Sister</option>
           <option>Spouse</option>
+          <option>Son</option>
+          <option>Daughter</option>
         </select>
       </td>
       <td><input type="text" name="family[${index}][name]"></td>
@@ -472,6 +559,7 @@ window.addFamilyRow = () => {
   rel.addEventListener("change", () => {
     syncFamilyRow(tr);
     updateFamilyRelationshipOptions();
+    reorderFamilyRows();
   });
   bindFamilyRowAutosave(tr);
 };
@@ -481,6 +569,49 @@ function bindFamilyRowAutosave(row) {
     el.addEventListener("input", window.debouncedSaveDraft);
     el.addEventListener("change", window.debouncedSaveDraft);
   });
+}
+
+window.removeFamilyRow = (btn) => {
+  const tr = btn.closest("tr");
+  if (!tr) return;
+  const tbody = tr.parentElement;
+  tr.remove();
+  reorderFamilyRows();
+  updateFamilyRelationshipOptions();
+  window.debouncedSaveDraft();
+};
+
+function reindexFamilyRows(tbody) {
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll("tr");
+  rows.forEach((row, i) => {
+    row.querySelectorAll("input, select").forEach(el => {
+      const name = el.name;
+      if (name && name.startsWith("family[")) {
+        el.name = name.replace(/family\[\d+\]/, `family[${i}]`);
+      }
+    });
+  });
+}
+
+function reorderFamilyRows() {
+  const tbody = document.getElementById("familyTableBody");
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+
+  rows.sort((a, b) => {
+    const valA = a.querySelector("select[name*='relationship']")?.value || "";
+    const valB = b.querySelector("select[name*='relationship']")?.value || "";
+
+    const priority = { "Father": 1, "Mother": 2 };
+    const pA = priority[valA] || 99;
+    const pB = priority[valB] || 99;
+
+    return pA - pB;
+  });
+
+  rows.forEach(row => tbody.appendChild(row));
+  reindexFamilyRows(tbody);
 }
 
 function syncFamilyRow(row) {
@@ -668,16 +799,23 @@ function fillMediclaimEmployeeDetails() {
 }
 // --- UI Update Helpers ---
 function updateStepperUI() {
-  if (window.stepperSteps && stepperSteps.length > 0) {
+  if (stepperSteps && stepperSteps.length > 0) {
     stepperSteps.forEach((circle, i) => {
       circle.classList.toggle("active", i === currentStep);
       circle.classList.toggle("completed", i < currentStep);
     });
+
+    // Update progress line
+    const progressLine = document.querySelector(".stepper-line");
+    if (progressLine) {
+      const percent = (currentStep / (stepperSteps.length - 1)) * 100;
+      progressLine.style.background = `linear-gradient(to right, #47749b ${percent}%, #d1d5db ${percent}%)`;
+    }
   }
 }
 
 function updateSidebarUI() {
-  if (window.sidebarItems && sidebarItems.length > 0) {
+  if (sidebarItems && sidebarItems.length > 0) {
     sidebarItems.forEach((li, i) => {
       li.classList.toggle("active", i === currentStep);
       li.classList.toggle("completed", i < currentStep);
@@ -685,53 +823,73 @@ function updateSidebarUI() {
   }
 }
 
-function fillMediclaimFamilyDetails() {
+function fillMediclaimFamilyDetails(sourceData = null) {
   const tbody = document.getElementById("mediclaimFamilyBody");
   if (!tbody) return;
 
   tbody.innerHTML = "";
   let sno = 1;
 
-  const rows = document.querySelectorAll("#familyTableBody tr");
+  let familyRows = [];
 
-  rows.forEach(row => {
-    const relation = row.querySelector("select[name*='relationship']")?.value || "";
-    const name = row.querySelector("input[name*='name']")?.value || "";
-    let dob = row.querySelector("input[name*='dob']")?.value || "";
+  if (sourceData) {
+    // Determine family rows from provided data object
+    const indices = Object.keys(sourceData)
+      .filter(k => k.startsWith("family["))
+      .map(k => parseInt(k.match(/\[(\d+)\]/)?.[1]))
+      .filter((v, i, a) => !isNaN(v) && a.indexOf(v) === i);
 
-    if (dob) {
+    familyRows = indices.map(idx => ({
+      relationship: sourceData[`family[${idx}][relationship]`] || "",
+      name: sourceData[`family[${idx}][name]`] || "",
+      dob: sourceData[`family[${idx}][dob]`] || ""
+    }));
+  } else {
+    // Read directly from DOM (original logic)
+    document.querySelectorAll("#familyTableBody tr").forEach(row => {
+      familyRows.push({
+        relationship: row.querySelector("select[name*='relationship']")?.value || "",
+        name: row.querySelector("input[name*='name']").value || "",
+        dob: row.querySelector("input[name*='dob']").value || ""
+      });
+    });
+  }
+
+  familyRows.forEach(row => {
+    let { relationship, name, dob } = row;
+    if (!relationship || !name) return;
+
+    // Date formatting (DD/MM/YYYY)
+    if (dob && dob.includes("-")) {
       const [year, month, day] = dob.split("-");
       dob = `${day}/${month}/${year}`;
     }
 
-    if (!relation || !name) return;
-
+    // Automatic Gender Generation
     let gender = "";
-
-    switch (relation) {
+    switch (relationship) {
       case "Father":
       case "Brother":
+      case "Son":
         gender = "Male";
         break;
-
       case "Mother":
       case "Sister":
+      case "Daughter":
         gender = "Female";
         break;
-
-      case "Spouse": {
-        const candidateGender =
-          document.querySelector("input[name='gender']:checked")?.value || "";
+      case "Spouse":
+        const candidateGender = document.querySelector("input[name='gender']:checked")?.value || 
+                                (sourceData ? sourceData.gender : "");
         if (candidateGender === "Male") gender = "Female";
         else if (candidateGender === "Female") gender = "Male";
         break;
-      }
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${sno++}</td>
-      <td>${relation}</td>
+      <td>${relationship}</td>
       <td>${gender}</td>
       <td>${name}</td>
       <td>${dob}</td>
@@ -743,45 +901,23 @@ function fillMediclaimFamilyDetails() {
 function populateMediclaimStep(data) {
   if (!data) return;
 
-  // ===== Header / simple bindings =====
+  // Header / simple bindings
   document.querySelectorAll("[data-bind]").forEach(el => {
     const key = el.dataset.bind;
     if (key === "today") {
-      el.textContent = new Date().toLocaleDateString("en-IN");
+      const now = new Date();
+      el.textContent = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     } else if (key === "firstName lastName") {
       el.textContent = `${data.firstName || ""} ${data.lastName || ""}`;
+    } else if (key === "dob" && data[key]) {
+      const [y, m, d] = data[key].split("-");
+      el.textContent = (y && m && d) ? `${d}/${m}/${y}` : data[key];
     } else if (data[key]) {
       el.textContent = data[key];
     }
   });
 
-  // ===== Family table =====
-  const tbody = document.getElementById("mediclaimFamilyBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-  let i = 1;
-
-  const familyRows = Object.keys(data)
-    .filter(k => k.startsWith("family["))
-    .reduce((rows, key) => {
-      const idx = key.match(/\[(\d+)\]/)?.[1];
-      if (!rows[idx]) rows[idx] = {};
-      rows[idx][key.split("][").pop().replace("]", "")] = data[key];
-      return rows;
-    }, {});
-
-  Object.values(familyRows).forEach(row => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="center">${i++}</td>
-      <td>${row.relationship || ""}</td>
-      <td>${row.gender || ""}</td>
-      <td>${row.name || ""}</td>
-      <td>${row.dob || ""}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+  fillMediclaimFamilyDetails(data);
 }
 
 
@@ -814,9 +950,6 @@ function showStep(index) {
   if (index === 5) { // Step‑6 (Mediclaim)
     fillMediclaimEmployeeDetails();
     fillMediclaimFamilyDetails();
-    if (typeof populateMediclaimStep === "function") {
-      populateMediclaimStep(collectFormData());
-    }
   }
 }
 
@@ -1355,6 +1488,50 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleExperienceDependentSections();
   });
 
+  /* ================= SIGNATURE UPLOAD LOGIC ================= */
+  const sigFileInput = document.getElementById("signatureFile");
+  const step5Box = document.getElementById("step5SigBox");
+  const step6Box = document.getElementById("step6SigBox");
+
+  sigFileInput?.addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    const container = document.querySelector(".signature-upload-container");
+
+    container?.classList.remove("input-error");
+    const sigError = document.getElementById("signatureError");
+    if (sigError) sigError.style.display = "none";
+
+    if (!file) return;
+
+    // 1️⃣ Format Validation
+    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      alert("Invalid format! Accepted: PNG, JPG, JPEG");
+      sigFileInput.value = "";
+      return;
+    }
+
+    // 2️⃣ Size Validation (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File too large! Max size: 2MB");
+      sigFileInput.value = "";
+      return;
+    }
+
+    // 3️⃣ Read & Preview
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      updateSignaturePreviews(e.target.result);
+      debouncedSaveDraft();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Since Step 6 box is also a label for sigFileInput, it works automatically if label for is correct.
+  // But safety trigger:
+  step6Box?.addEventListener("click", () => sigFileInput?.click());
+
+
   function activateAutosave() {
     if (autosaveActivated) return; // ✅ prevent duplicate binding
     autosaveActivated = true;
@@ -1702,63 +1879,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const father = step.querySelector("#fatherName");
     const mother = step.querySelector("#motherName");
 
-    if (!religion?.value?.trim()) {
+    if (religion && !religion.value?.trim()) {
       showError(religion, "Religion is required", silent);
       ok = false;
     }
 
-    if (!nationality?.value?.trim()) {
+    if (nationality && !nationality.value?.trim()) {
       showError(nationality, "Nationality is required", silent);
       ok = false;
     }
 
-    if (!isValidPersonName(father?.value)) {
+    if (father && !isValidPersonName(father.value)) {
       showError(father, "Valid father's name required", silent);
       ok = false;
     }
 
-    if (!isValidPersonName(mother?.value)) {
+    if (mother && !isValidPersonName(mother.value)) {
       showError(mother, "Valid mother's name required", silent);
       ok = false;
     }
 
-    if (!dob?.value || isFutureDate(dob.value)) {
+    if (dob && (!dob.value || isFutureDate(dob.value))) {
       showError(dob, "Invalid DOB", silent);
       ok = false;
     }
 
-    if (+age?.value < 18) {
+    if (age && +age.value < 18) {
       showError(age, "Age must be ≥ 18", silent);
       ok = false;
     }
 
-    if (!minLen(fn?.value, 2) || !isAlpha(fn?.value)) {
+    if (fn && (!minLen(fn.value, 2) || !isAlpha(fn.value))) {
       showError(fn, "Invalid first name", silent);
       ok = false;
     }
 
-    if (!minLen(ln?.value, 1) || !isAlpha(ln?.value)) {
+    if (ln && (!minLen(ln.value, 1) || !isAlpha(ln.value))) {
       showError(ln, "Invalid last name", silent);
       ok = false;
     }
 
-    if (!maritalStatus?.value) {
+    if (maritalStatus && !maritalStatus.value) {
       showError(maritalStatus, "Marital status is required", silent);
       ok = false;
     }
 
     if (maritalStatus?.value === "Married") {
-      if (!marriageDate?.value) {
+      if (marriageDate && !marriageDate.value) {
         showError(marriageDate, "Marriage date required", silent);
         ok = false;
       }
-      if (childrenCount?.value === "" || +childrenCount.value < 0) {
+      if (childrenCount && (childrenCount.value === "" || +childrenCount.value < 0)) {
         showError(childrenCount, "Enter valid children count", silent);
         ok = false;
       }
     }
 
-    if (!prolongedIllness?.value) {
+    if (prolongedIllness && !prolongedIllness.value) {
       showError(prolongedIllness, "Please select illness status", silent);
       ok = false;
     }
@@ -1766,15 +1943,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!validateKYC(silent)) ok = false;
 
     if (prolongedIllness?.value === "Yes") {
-      if (!illnessName?.value.trim()) {
+      if (illnessName && !illnessName.value.trim()) {
         showError(illnessName, "Illness name required", silent);
         ok = false;
       }
-      if (!illnessDuration?.value.trim()) {
+      if (illnessDuration && !illnessDuration.value.trim()) {
         showError(illnessDuration, "Duration required", silent);
         ok = false;
       }
-
     }
 
     const disability = step.querySelector("#disability");
@@ -1797,9 +1973,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const genderChecked = step.querySelector("input[name='gender']:checked");
 
     if (!genderChecked) {
-      clearError(genderGroup);
-      showError(genderGroup, "Required", silent);
-
+      if (genderGroup) {
+        clearError(genderGroup);
+        showError(genderGroup, "Required", silent);
+      }
       ok = false;
     }
     // ----- Place of Birth  -----
@@ -2454,31 +2631,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function autoCalculateSalary() {
-    if (!step5) return;
 
-    const rows = step5.querySelectorAll(".family-table tbody tr");
-    let a = 0, b = 0, c = 0;
-
-    rows.forEach(row => {
-      const nums = row.querySelectorAll("input[type='number']");
-      if (nums[0]?.value) a += +nums[0].value;
-      if (nums[1]?.value) b += +nums[1].value;
-      if (nums[2]?.value) c += +nums[2].value;
-    });
-
-    const totalA = document.getElementById("totalA");
-    const totalB = document.getElementById("totalB");
-    const totalC = document.getElementById("totalC");
-    const monthly = document.getElementById("monthlyTotal");
-    const annual = document.getElementById("annualTotal");
-
-    if (totalA) totalA.value = a;
-    if (totalB) totalB.value = b;
-    if (totalC) totalC.value = c;
-    if (monthly) monthly.value = a + b + c;
-    if (annual) annual.value = (a + b + c) * 12;
-  }
 
 
   // ================= EVENT LISTENERS =================
@@ -2489,7 +2642,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Salary auto calculation
   step5
-    ?.querySelectorAll(".family-table input[type='number']")
+    ?.querySelectorAll("#salarySection .family-table input[type='number']")
     .forEach(i => {
       i.addEventListener("input", e => {
         if (+e.target.value < 0) e.target.value = 0;
@@ -2561,6 +2714,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!declPlace?.value?.trim()) {
       showError(declPlace, "Place required", silent);
+      ok = false;
+    }
+
+    /* ===== SIGNATURE VALIDATION ===== */
+    const sigBase64 = document.getElementById("signatureBase64")?.value;
+    if (!sigBase64) {
+      const container = document.querySelector(".signature-upload-container");
+      const sigError = document.getElementById("signatureError");
+      if (container) container.classList.add("input-error");
+      if (sigError && !silent) {
+        sigError.textContent = "Signature is required";
+        sigError.style.display = "block";
+      }
       ok = false;
     }
 
@@ -2728,9 +2894,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!mediclaimConsent.value) {
       showStepError(step, "Please select Mediclaim consent", silent);
-      return false;
+      ok = false;
     }
-    return true;
+
+    if (mediclaimConsent.value === "Yes") {
+      const sigBase64 = document.getElementById("signatureBase64")?.value;
+      if (!sigBase64) {
+        const sigContainer = step.querySelector(".signature-upload-container");
+        if (sigContainer) sigContainer.classList.add("input-error");
+        showStepError(step, "Signature is required for Mediclaim enrollment", silent);
+        ok = false;
+      }
+    }
+    return ok;
   }
 
   const mediclaimYes = document.getElementById("mediclaimYes");
@@ -2782,24 +2958,35 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* ===== NEXT BUTTON ===== */
-  nextBtn.onclick = () => {
-    const isValid = validators[currentStep](false);
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      try {
+        console.log("Navigating from step:", currentStep);
+        const isValid = validators[currentStep](false);
 
-    if (!isValid) {
-      shakeCurrentStep();
-      return;
-    }
+        if (!isValid) {
+          console.warn("Validation failed for step:", currentStep);
+          shakeCurrentStep();
+          return;
+        }
 
-    debouncedSaveDraft();
-    navigateToStep(currentStep + 1);   // ✅ use internal function
-  };
+        debouncedSaveDraft();
+        navigateToStep(currentStep + 1);
+      } catch (err) {
+        console.error("Critical Next navigation error:", err);
+        // Fallback to avoid dead button
+        navigateToStep(currentStep + 1);
+      }
+    };
+  }
 
   /* ===== PREVIOUS BUTTON ===== */
-  prevBtn.onclick = () => {
-    debouncedSaveDraft();
-    navigateToStep(currentStep - 1);   // ✅ use internal function
-    updateNextVisualState();
-  };
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      debouncedSaveDraft();
+      navigateToStep(currentStep - 1);
+    };
+  }
 
   /* ===== VISUAL STATE ONLY (NEVER DISABLE) ===== */
   function updateNextVisualState() {

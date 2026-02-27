@@ -37,6 +37,10 @@
 
     <div class="container">
       <form id="candidateForm">
+        <!-- Hidden signature fields -->
+        <input type="file" id="signatureFile" style="display: none;" accept=".png,.jpg,.jpeg">
+        <input type="hidden" id="signatureBase64" name="signatureBase64">
+        
         <!-- STEP PROGRESS BAR -->
         <div class="stepper">
           <div class="stepper-line"></div>
@@ -276,7 +280,7 @@
           <table class="family-table">
             <thead>
               <tr>
-                <th>S.No</th>
+                <th style="width: 50px;">Action</th>
                 <th>Relationship</th>
                 <th>Name</th>
                 <th>DOB</th>
@@ -288,7 +292,11 @@
 
             <tbody id="familyTableBody">
               <tr>
-                <td>1</td>
+                <td class="center">
+                  <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                  </button>
+                </td>
 
                 <td>
                   <div class="form-field">
@@ -747,19 +755,19 @@
             <br>
 
             <div class="grid-3">
-              <div class="form-field"><input type="number" id="totalA" placeholder="Total (a)"></div>
-              <div class="form-field"><input type="number" id="totalB" placeholder="Total (b)"></div>
-              <div class="form-field"><input type="number" id="totalC" placeholder="Total (c)"></div>
+              <div class="form-field"><input type="number" id="totalA" name="totalA" placeholder="Total (a)"></div>
+              <div class="form-field"><input type="number" id="totalB" name="totalB" placeholder="Total (b)"></div>
+              <div class="form-field"><input type="number" id="totalC" name="totalC" placeholder="Total (c)"></div>
             </div>
 
             <div class="grid-2">
               <div class="form-field">
                 <label>Total Earnings Per Month (a+b+c)</label>
-                <input type="number" id="monthlyTotal">
+                <input type="number" id="monthlyTotal" name="monthlyTotal">
               </div>
               <div class="form-field">
                 <label>Total Earnings Per Annum</label>
-                <input type="number" id="annualTotal">
+                <input type="number" id="annualTotal" name="annualTotal">
               </div>
             </div>
 
@@ -814,7 +822,11 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>1</td>
+                 <td class="center">
+                  <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                  </button>
+                </td>
                   <td><input name="ref[0][name]"></td>
                   <td><input name="ref[0][occupation]"></td>
                   <td><input name="ref[0][address]"></td>
@@ -897,9 +909,13 @@
               </div>
             </div>
 
-            <div class="form-field right">
-              <img src="signature.png" class="signature-img">
+            <div class="form-field signature-upload-container right">
+              <label for="signatureFile" class="signature-upload-box" id="step5SigBox">
+                <span class="placeholder-text">Click to add a signature</span>
+                <img src="" class="signature-preview" id="step5SigPreview" style="display:none;">
+              </label>
               <span class="label">Signature of the Applicant</span>
+              <small class="error-text" id="signatureError" style="display:none;"></small>
             </div>
 
             <hr>
@@ -1001,13 +1017,16 @@
                   </div>
 
                   <div class="signature-row right">
-                    <div class="signature-block">
-                      <img src="signature.png" class="signature-img" alt="Signature">
+                    <div class="signature-block signature-upload-container">
+                      <label for="signatureFile" class="signature-upload-box" id="step6SigBox">
+                        <span class="placeholder-text">Click to add a signature</span>
+                        <img src="" class="signature-preview" id="step6SigPreview" style="display:none;">
+                      </label>
                       <span class="label">Signature of the Employee</span>
                     </div>
 
                     <div class="date-block">
-                      <span class="label">Date</span>
+                      <span class="label">Date:</span>
                       <div class="line short" data-bind="today"></div>
                     </div>
                   </div>
