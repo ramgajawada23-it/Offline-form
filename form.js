@@ -1037,15 +1037,21 @@ function allowOnlyAlphabets(input) {
 }
 
 function isSkippable(el) {
-  return (
-    !el ||
-    el.disabled ||
-    el.readOnly ||
-    el.offsetParent === null ||
-    el.id === "pan" ||
-    el.id === "aadhaar" ||
-    el.id === "bankAccount"
-  );
+  if (!el) return true;
+  if (el.disabled || el.readOnly || el.offsetParent === null) return true;
+
+  const optionalIds = new Set([
+    "pan", "aadhaar", "bankAccount",
+    "monthlyOthers", "statutoryOthers",
+    "totalA", "totalB", "totalC",
+    "monthlyTotal", "annualTotal"
+  ]);
+
+  const optionalNames = new Set([
+    "monthlyOthers", "statutoryOthers"
+  ]);
+
+  return optionalIds.has(el.id) || optionalNames.has(el.name);
 }
 
 let serverDraft = null;
@@ -1101,6 +1107,7 @@ function clearAllErrors() {
 
 function showError(el, msg, silent = false) {
   if (silent || !el) return;
+  console.log("Validation error on field:", el.name || el.id, "Message:", msg);
   markError(el, msg);
 }
 
@@ -2785,13 +2792,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       /* ================= PRESENT SALARY (REQUIRED) ================= */
       step.querySelectorAll("#salarySection input").forEach(el => {
-
+        // Skip explicitly allowed optional fields
         if (isSkippable(el)) return;
 
-        // Skip "Others" fields
-        if (el.id === "monthlyOthers" || el.id === "statutoryOthers") {
-          return;
-        }
+        // // FINAL OVERRIDE for "Others" fields - Ensure they are NEVER required
+        // if (el.id === "monthlyOthers" || el.name === "monthlyOthers" || 
+        //     el.id === "statutoryOthers" || el.name === "statutoryOthers") {
+        //   return;
+        // }
 
         if (!el.value.trim()) {
           showError(el, "This field is required", silent);
