@@ -1051,6 +1051,9 @@ function isSkippable(el) {
     "monthlyOthers", "statutoryOthers"
   ]);
 
+  // Make all specific salary breakup fields optional (they default to 0 in calculations)
+  if (el.name && el.name.startsWith("salary_")) return true;
+
   return optionalIds.has(el.id) || optionalNames.has(el.name);
 }
 
@@ -2888,6 +2891,10 @@ document.addEventListener("DOMContentLoaded", () => {
         step5,
         "Please correct the highlighted errors before continuing"
       );
+      
+      const errorElements = Array.from(step5.querySelectorAll(".input-error"));
+      console.warn("Validation failed for step: 4. The following fields have errors:", errorElements.map(e => e.name || e.id || "Unknown field"));
+
       focusFirstError(step5);
     }
 
@@ -2899,6 +2906,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function validateStep6(silent = false) {
     if (isRestoring) return true; // ✅ Skip
     const step = steps[5];
+    let ok = true;
 
     if (!mediclaimConsent.value) {
       showStepError(step, "Please select Mediclaim consent", silent);

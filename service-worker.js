@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v7";
+const CACHE_NAME = "offline-form-v8";
 
 const FILES = [
   "./",
