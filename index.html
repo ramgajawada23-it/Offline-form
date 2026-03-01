@@ -4,6 +4,7 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>candidateForm</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -277,76 +278,78 @@
         <section class="form-step" id="step2">
           <h3 class="section-title">Details of Family Members</h3>
 
-          <table class="family-table">
-            <thead>
-              <tr>
-                <th style="width: 50px;">Action</th>
-                <th>Relationship</th>
-                <th>Name</th>
-                <th>DOB</th>
-                <th>Dependent</th>
-                <th>Occupation</th>
-                <th>Income</th>
-              </tr>
-            </thead>
+          <div class="table-wrap">
+            <table class="family-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">Action</th>
+                  <th>Relationship</th>
+                  <th>Name</th>
+                  <th>DOB</th>
+                  <th>Dependent</th>
+                  <th>Occupation</th>
+                  <th>Income</th>
+                </tr>
+              </thead>
 
-            <tbody id="familyTableBody">
-              <tr>
-                <td class="center">
-                  <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
-                    <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
-                  </button>
-                </td>
+              <tbody id="familyTableBody">
+                <tr>
+                  <td class="center">
+                    <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
+                      <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                    </button>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <select name="family[0][relationship]">
-                      <option value="">Select</option>
-                      <option value="Father">Father</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Brother">Brother</option>
-                      <option value="Sister">Sister</option>
-                      <option value="Spouse">Spouse</option>
-                    </select>
-                  </div>
-                </td>
+                  <td>
+                    <div class="form-field">
+                      <select name="family[0][relationship]">
+                        <option value="">Select</option>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                        <option value="Spouse">Spouse</option>
+                      </select>
+                    </div>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <input type="text" name="family[0][name]" placeholder="Full Name" readonly>
-                  </div>
-                </td>
+                  <td>
+                    <div class="form-field">
+                      <input type="text" name="family[0][name]" placeholder="Full Name" readonly>
+                    </div>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <input type="date" name="family[0][dob]">
-                  </div>
-                </td>
+                  <td>
+                    <div class="form-field">
+                      <input type="date" name="family[0][dob]">
+                    </div>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <select name="family[0][dependent]">
-                      <option value="">Select</option>
-                      <option>Yes</option>
-                      <option>No</option>
-                    </select>
-                  </div>
-                </td>
+                  <td>
+                    <div class="form-field">
+                      <select name="family[0][dependent]">
+                        <option value="">Select</option>
+                        <option>Yes</option>
+                        <option>No</option>
+                      </select>
+                    </div>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <input type="text" name="family[0][occupation]" placeholder="Occupation" required>
-                  </div>
-                </td>
+                  <td>
+                    <div class="form-field">
+                      <input type="text" name="family[0][occupation]" placeholder="Occupation" required>
+                    </div>
+                  </td>
 
-                <td>
-                  <div class="form-field">
-                    <input type="number" name="family[0][income]" min="0" max="999999">
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <td>
+                    <div class="form-field">
+                      <input type="number" name="family[0][income]" min="0" max="999999">
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <div class="add-row">
             <button type="button" onclick="addFamilyRow()">Add Row</button>
@@ -366,30 +369,32 @@
             <div class="graduation-wrapper">
 
               <!-- First Fixed Graduation Table (NO DELETE) -->
-              <table class="education-table">
-                <thead>
-                  <tr>
-                    <th>College Name</th>
-                    <th>Board / University</th>
-                    <th>Degree</th>
-                    <th>Stream</th>
-                    <th>Joining Year</th>
-                    <th>Leaving Year</th>
-                    <th>Aggregate %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="main-graduation-row">
-                    <td><input type="text" name="grad_college[]"></td>
-                    <td><input type="text" name="grad_board[]"></td>
-                    <td><input type="text" name="grad_degree[]"></td>
-                    <td><input type="text" name="grad_stream[]"></td>
-                    <td><input type="number" name="grad_joining[]"></td>
-                    <td><input type="number" name="grad_leaving[]"></td>
-                    <td><input type="number" name="grad_aggregate[]"></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="table-wrap">
+                <table class="education-table">
+                  <thead>
+                    <tr>
+                      <th>College Name</th>
+                      <th>Board / University</th>
+                      <th>Degree</th>
+                      <th>Stream</th>
+                      <th>Joining Year</th>
+                      <th>Leaving Year</th>
+                      <th>Aggregate %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="main-graduation-row">
+                      <td><input type="text" name="grad_college[]"></td>
+                      <td><input type="text" name="grad_board[]"></td>
+                      <td><input type="text" name="grad_degree[]"></td>
+                      <td><input type="text" name="grad_stream[]"></td>
+                      <td><input type="number" name="grad_joining[]"></td>
+                      <td><input type="number" name="grad_leaving[]"></td>
+                      <td><input type="number" name="grad_aggregate[]"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
               <!-- Added graduation tables will appear here -->
               <div id="extraGraduations"></div>
@@ -400,53 +405,57 @@
 
             <!-- ================= INTERMEDIATE ================= -->
             <h4>Intermediate</h4>
-            <table class="education-table">
-              <thead>
-                <tr>
-                  <th>College Name</th>
-                  <th>Board</th>
-                  <th>Stream</th>
-                  <th>Joining Year</th>
-                  <th>Leaving Year</th>
-                  <th>Aggregate %</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><input type="text" name="inter_college"></td>
-                  <td><input type="text" name="inter_board"></td>
-                  <td><input type="text" name="inter_stream"></td>
-                  <td><input type="number" name="inter_joining"></td>
-                  <td><input type="number" name="inter_leaving"></td>
-                  <td><input type="number" name="inter_aggregate"></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table class="education-table">
+                <thead>
+                  <tr>
+                    <th>College Name</th>
+                    <th>Board</th>
+                    <th>Stream</th>
+                    <th>Joining Year</th>
+                    <th>Leaving Year</th>
+                    <th>Aggregate %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="text" name="inter_college"></td>
+                    <td><input type="text" name="inter_board"></td>
+                    <td><input type="text" name="inter_stream"></td>
+                    <td><input type="number" name="inter_joining"></td>
+                    <td><input type="number" name="inter_leaving"></td>
+                    <td><input type="number" name="inter_aggregate"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <br>
 
             <!-- ================= 10TH ================= -->
             <h4>10th / Schooling</h4>
-            <table class="education-table">
-              <thead>
-                <tr>
-                  <th>School Name</th>
-                  <th>Board</th>
-                  <th>Joining Year</th>
-                  <th>Leaving Year</th>
-                  <th>Aggregate %</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><input type="text" name="school_name"></td>
-                  <td><input type="text" name="school_board"></td>
-                  <td><input type="number" name="school_joining"></td>
-                  <td><input type="number" name="school_leaving"></td>
-                  <td><input type="number" name="school_aggregate"></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table class="education-table">
+                <thead>
+                  <tr>
+                    <th>School Name</th>
+                    <th>Board</th>
+                    <th>Joining Year</th>
+                    <th>Leaving Year</th>
+                    <th>Aggregate %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="text" name="school_name"></td>
+                    <td><input type="text" name="school_board"></td>
+                    <td><input type="number" name="school_joining"></td>
+                    <td><input type="number" name="school_leaving"></td>
+                    <td><input type="number" name="school_aggregate"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <br>
             <button type="button" id="addEducationBtn">Add Education</button>
@@ -498,29 +507,31 @@
           <div class="form-field" id="extraCurricularSection">
             <label class="field-label">EXTRA CURRICULAR ACTIVITIES:</label>
 
-            <table class="activity-table">
-              <thead>
-                <tr>
-                  <th>Literary / Cultural</th>
-                  <th>Sports</th>
-                  <th>Hobbies</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <textarea id="activityLiterary" name="activityLiterary" placeholder="Literary / Cultural"
-                      rows="5"></textarea>
-                  </td>
-                  <td>
-                    <textarea id="activitySports" name="activitySports" placeholder="Sports" rows="5"></textarea>
-                  </td>
-                  <td>
-                    <textarea id="activityHobbies" name="activityHobbies" placeholder="Hobbies" rows="5"></textarea>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table class="activity-table">
+                <thead>
+                  <tr>
+                    <th>Literary / Cultural</th>
+                    <th>Sports</th>
+                    <th>Hobbies</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <textarea id="activityLiterary" name="activityLiterary" placeholder="Literary / Cultural"
+                        rows="5"></textarea>
+                    </td>
+                    <td>
+                      <textarea id="activitySports" name="activitySports" placeholder="Sports" rows="5"></textarea>
+                    </td>
+                    <td>
+                      <textarea id="activityHobbies" name="activityHobbies" placeholder="Hobbies" rows="5"></textarea>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <!-- ✅ FIELD LEVEL ERROR (REQUIRED) -->
             <small class="error-text" id="extraCurricularError" style="display:none;">
@@ -530,40 +541,42 @@
 
           <!-- Languages -->
           <div class="form-field">
-            <table class="language-table" id="languageTable">
-              <thead>
-                <tr>
-                  <th>Language</th>
-                  <th>Speak</th>
-                  <th>Read</th>
-                  <th>Write</th>
-                  <th>Mother Tongue</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Fixed English -->
-                <tr>
-                  <td>
-                    <input type="text" name="languages[0][name]" value="English" readonly>
-                  </td>
-                  <td><input type="checkbox" name="languages[0][speak]"></td>
-                  <td><input type="checkbox" name="languages[0][read]"></td>
-                  <td><input type="checkbox" name="languages[0][write]"></td>
-                  <td><input type="radio" name="motherTongue" value="0"></td>
-                </tr>
+            <div class="table-wrap">
+              <table class="language-table" id="languageTable">
+                <thead>
+                  <tr>
+                    <th>Language</th>
+                    <th>Speak</th>
+                    <th>Read</th>
+                    <th>Write</th>
+                    <th>Mother Tongue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Fixed English -->
+                  <tr>
+                    <td>
+                      <input type="text" name="languages[0][name]" value="English" readonly>
+                    </td>
+                    <td><input type="checkbox" name="languages[0][speak]"></td>
+                    <td><input type="checkbox" name="languages[0][read]"></td>
+                    <td><input type="checkbox" name="languages[0][write]"></td>
+                    <td><input type="radio" name="motherTongue" value="0"></td>
+                  </tr>
 
-                <!-- Fixed Hindi -->
-                <tr>
-                  <td>
-                    <input type="text" name="languages[1][name]" value="Hindi" readonly>
-                  </td>
-                  <td><input type="checkbox" name="languages[1][speak]"></td>
-                  <td><input type="checkbox" name="languages[1][read]"></td>
-                  <td><input type="checkbox" name="languages[1][write]"></td>
-                  <td><input type="radio" name="motherTongue" value="1"></td>
-                </tr>
-              </tbody>
-            </table>
+                  <!-- Fixed Hindi -->
+                  <tr>
+                    <td>
+                      <input type="text" name="languages[1][name]" value="Hindi" readonly>
+                    </td>
+                    <td><input type="checkbox" name="languages[1][speak]"></td>
+                    <td><input type="checkbox" name="languages[1][read]"></td>
+                    <td><input type="checkbox" name="languages[1][write]"></td>
+                    <td><input type="radio" name="motherTongue" value="1"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <button type="button" id="addLanguageBtn" class="btn-add">
               + Add Language
@@ -697,61 +710,63 @@
           <div id="salarySection">
             <h3 class="section-title">Present Salary (Gross) – Monthly Breakup</h3>
 
-            <table class="family-table">
-              <thead>
-                <tr>
-                  <th>(a) Monthly Benefits</th>
-                  <th>Rs.</th>
-                  <th>(b) Deferred Benefits</th>
-                  <th>Rs.</th>
-                  <th>(c) Statutory & Security Benefits</th>
-                  <th>Rs.</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Basic</td>
-                  <td><input type="number" name="salary_basic"></td>
-                  <td>LTA</td>
-                  <td><input type="number" name="salary_lta"></td>
-                  <td>PF</td>
-                  <td><input type="number" name="salary_pf"></td>
-                </tr>
-                <tr>
-                  <td>DA</td>
-                  <td><input type="number" name="salary_da"></td>
-                  <td>Medical</td>
-                  <td><input type="number" name="salary_medical"></td>
-                  <td>Gratuity</td>
-                  <td><input type="number" name="salary_gratuity"></td>
-                </tr>
-                <tr>
-                  <td>Conveyance Allowance</td>
-                  <td><input type="number" name="salary_conveyance"></td>
-                  <td>Bonus / Ex‑gratia</td>
-                  <td><input type="number" name="salary_bonus"></td>
-                  <td>Superannuation</td>
-                  <td><input type="number" name="salary_superannuation"></td>
-                </tr>
-                <tr>
-                  <td>Education Allowance</td>
-                  <td><input type="number" name="salary_education"></td>
-                  <!-- <td>Others</td>
-                  <td><input type="number" id="monthlyOthers" name="monthlyOthers"></td>
-                  <td>Others</td>
-                  <td><input type="number" id="statutoryOthers" name="statutoryOthers"></td> -->
-                  <td></td><td></td><td></td><td></td>
-                </tr>
-                <tr>
-                  <td>House Rent Allowance</td>
-                  <td><input type="number" name="salary_hra"></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table class="family-table">
+                <thead>
+                  <tr>
+                    <th>(a) Monthly Benefits</th>
+                    <th>Rs.</th>
+                    <th>(b) Deferred Benefits</th>
+                    <th>Rs.</th>
+                    <th>(c) Statutory & Security Benefits</th>
+                    <th>Rs.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Basic</td>
+                    <td><input type="number" name="salary_basic"></td>
+                    <td>LTA</td>
+                    <td><input type="number" name="salary_lta"></td>
+                    <td>PF</td>
+                    <td><input type="number" name="salary_pf"></td>
+                  </tr>
+                  <tr>
+                    <td>DA</td>
+                    <td><input type="number" name="salary_da"></td>
+                    <td>Medical</td>
+                    <td><input type="number" name="salary_medical"></td>
+                    <td>Gratuity</td>
+                    <td><input type="number" name="salary_gratuity"></td>
+                  </tr>
+                  <tr>
+                    <td>Conveyance Allowance</td>
+                    <td><input type="number" name="salary_conveyance"></td>
+                    <td>Bonus / Ex‑gratia</td>
+                    <td><input type="number" name="salary_bonus"></td>
+                    <td>Superannuation</td>
+                    <td><input type="number" name="salary_superannuation"></td>
+                  </tr>
+                  <tr>
+                    <td>Education Allowance</td>
+                    <td><input type="number" name="salary_education"></td>
+                    <!-- <td>Others</td>
+                    <td><input type="number" id="monthlyOthers" name="monthlyOthers"></td>
+                    <td>Others</td>
+                    <td><input type="number" id="statutoryOthers" name="statutoryOthers"></td> -->
+                    <td></td><td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td>House Rent Allowance</td>
+                    <td><input type="number" name="salary_hra"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <br>
 
@@ -812,30 +827,32 @@
             <h3 class="section-title">References</h3>
             <p>Two referees (at least one from present / past employer)</p>
 
-            <table class="family-table">
-              <thead>
-                <tr>
-                  <th>S.No</th>
-                  <th>Name</th>
-                  <th>Occupation</th>
-                  <th>Address & Telephone No.</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>1</td>
-                  <td><input name="ref[0][name]"></td>
-                  <td><input name="ref[0][occupation]"></td>
-                  <td><input name="ref[0][address]"></td>
-                </tr>
-                <tr>
-                  <td>2</td>
-                  <td><input name="ref[1][name]"></td>
-                  <td><input name="ref[1][occupation]"></td>
-                  <td><input name="ref[1][address]"></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table class="family-table">
+                <thead>
+                  <tr>
+                    <th>S.No</th>
+                    <th>Name</th>
+                    <th>Occupation</th>
+                    <th>Address & Telephone No.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1</td>
+                    <td><input name="ref[0][name]"></td>
+                    <td><input name="ref[0][occupation]"></td>
+                    <td><input name="ref[0][address]"></td>
+                  </tr>
+                  <tr>
+                    <td>2</td>
+                    <td><input name="ref[1][name]"></td>
+                    <td><input name="ref[1][occupation]"></td>
+                    <td><input name="ref[1][address]"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <div class="form-field">
               <label>Do you have any objection if we refer to your employer?</label>

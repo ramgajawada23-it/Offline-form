@@ -2395,6 +2395,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* ======================================================
+       1.3️⃣ CROSS-VALIDATION OF EDUCATION YEARS
+    ====================================================== */
+    const interJoinVal = interJoin?.value ? parseInt(interJoin.value) : null;
+    const interLeaveVal = interLeave?.value ? parseInt(interLeave.value) : null;
+    const schLeaveVal = schLeave?.value ? parseInt(schLeave.value) : null;
+
+    if (schLeaveVal) {
+      if (interJoinVal && interJoinVal < schLeaveVal) {
+        markError(interJoin, "Must be >= 10th leaving year");
+        if (!firstError) firstError = interJoin;
+        ok = false;
+      }
+      if (interLeaveVal && interLeaveVal <= schLeaveVal) {
+        markError(interLeave, "Must be > 10th leaving year");
+        if (!firstError) firstError = interLeave;
+        ok = false;
+      }
+    }
+
+    if (interLeaveVal) {
+      gradRows.forEach(row => {
+        const gJoinEl = row.querySelector("input[name='grad_joining[]']");
+        const gLeaveEl = row.querySelector("input[name='grad_leaving[]']");
+        const gJoinVal = gJoinEl?.value ? parseInt(gJoinEl.value) : null;
+        const gLeaveVal = gLeaveEl?.value ? parseInt(gLeaveEl.value) : null;
+
+        if (gJoinVal && gJoinVal < interLeaveVal) {
+          markError(gJoinEl, "Must be >= Inter leaving year");
+          if (!firstError) firstError = gJoinEl;
+          ok = false;
+        }
+        if (gLeaveVal && gLeaveVal <= interLeaveVal) {
+          markError(gLeaveEl, "Must be > Inter leaving year");
+          if (!firstError) firstError = gLeaveEl;
+          ok = false;
+        }
+      });
+    }
+
+    /* ======================================================
        2️⃣ LANGUAGE VALIDATION
     ====================================================== */
 
@@ -3009,7 +3049,6 @@ document.addEventListener("DOMContentLoaded", () => {
     nextBtn.classList.remove("disabled"); // ✅ visual-only, never block logic
   }
 
-
   /* ✅ Clear field error immediately when user corrects it */
   mainForm.addEventListener("input", e => {
     const el = e.target;
@@ -3022,7 +3061,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateNextVisualState();
   });
-
+  
   /* ================= SUBMIT ================= */
   document.getElementById("candidateForm").onsubmit = async e => {
     e.preventDefault();

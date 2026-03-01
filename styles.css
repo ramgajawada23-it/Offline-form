@@ -902,4 +902,28 @@ textarea.error,
   margin: 0 auto 8px;
 }
 
-
+@media (max-width: 600px) {
+  .top-nav {
+    height: auto;
+    flex-direction: column;
+    padding: 10px;
+    align-items: center;
+  }
+  .nav-logo {
+    height: 60px;
+    margin-top: 10px;
+  }
+  .app-title {
+    font-size: 20px;
+    text-align: center;
+  }
+  .layout {
+    margin-top: 120px;
+  }
+  .container {
+    padding: 10px;
+  }
+  .container > form {
+    padding: 15px 10px;
+  }
+}
