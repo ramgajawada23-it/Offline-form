@@ -147,6 +147,7 @@ async function restoreDraftState(data) {
     syncMediclaimVisibility();
     syncStep3Conditionals();
     syncInterviewVisibility();
+    syncLoanVisibility();
     syncAllFamilyRows();
     updateFamilyRelationshipOptions();
     autoCalculateSalary();
@@ -764,6 +765,30 @@ function setupInterviewLogic() {
   if (!interviewDropdown) return;
   interviewDropdown.addEventListener("change", syncInterviewVisibility);
   syncInterviewVisibility();
+}
+
+function syncLoanVisibility() {
+  const loanDropdown = document.getElementById("loanAvailed");
+  const loanFields = document.getElementById("loanFields");
+  if (!loanDropdown || !loanFields) return;
+
+  if (loanDropdown.value.toLowerCase() === "yes") {
+    loanFields.style.display = "";
+  } else {
+    loanFields.style.display = "none";
+    if (!isRestoring) {
+      loanFields.querySelectorAll("input").forEach(input => {
+        input.value = "";
+      });
+    }
+  }
+}
+
+function setupLoanLogic() {
+  const loanDropdown = document.getElementById("loanAvailed");
+  if (!loanDropdown) return;
+  loanDropdown.addEventListener("change", syncLoanVisibility);
+  syncLoanVisibility();
 }
 
 function syncAllFamilyRows() {
@@ -1392,6 +1417,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMediclaimRequiredLogic();
   setupStep3Conditionals();
   setupInterviewLogic();
+  setupLoanLogic();
 
   document
     .querySelectorAll("#familyTableBody tr")
