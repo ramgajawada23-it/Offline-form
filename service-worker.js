@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v10";
+const CACHE_NAME = "offline-form-v12";
 
 const FILES = [
   "./",
@@ -8,7 +8,6 @@ const FILES = [
   "./login.js",
   "./form.js",
   "./offline-db.js",
-  "./manifest.json",
   "./signature.png",
   "./BG1.jpg",
   "./BG2.jpg",

@@ -3,10 +3,11 @@ let isOnline = navigator.onLine;
 let realPan = "";
 let realAadhaar = "";
 let realBankAccount = "";
-let isRestoring = false;
+let isRestoring = true; // Block auto-saves during initial load
 let autosaveActivated = false;
 let maritalStatus, marriageDate, childrenCount, prolongedIllness, illnessName, illnessDuration;
 let steps = [], stepperSteps = [], sidebarItems = [], currentStep = 0;
+let serverDraft = null;
 const API_BASE = "https://offlineform.onrender.com";
 
 window.debouncedSaveDraft = function () {
@@ -50,6 +51,14 @@ window.addEventListener("offline", () => {
   isOnline = false;
   showToast("Internet Disconnected - Working Offline", "offline");
 });
+
+// Immediate check on load
+if (!navigator.onLine) {
+  isOnline = false;
+  setTimeout(() => {
+    showToast("Currently Offline - Using local memory", "offline");
+  }, 1000);
+}
 
 let lastDraftHash = "";
 
@@ -145,8 +154,6 @@ function collectFormData() {
 async function restoreDraftState(data) {
   if (!data) return;
 
-  isRestoring = true;
-
   try {
     // 1️⃣ Restore dynamic rows FIRST
     if (data.fields) {
@@ -185,9 +192,7 @@ async function restoreDraftState(data) {
     }
 
   } catch (err) {
-    console.error("Restore failed:", err);
-  } finally {
-    isRestoring = false;
+    console.error("Restore detailed logic failed:", err);
   }
 }
 function toggleExperienceDependentSections() {
@@ -1111,8 +1116,6 @@ function isSkippable(el) {
   return optionalIds.has(el.id) || optionalNames.has(el.name);
 }
 
-let serverDraft = null;
-
 async function loadDraft(mobile) {
   try {
     const response = await fetch(
@@ -1263,44 +1266,59 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   (async function restoreDraftFlow() {
+    isRestoring = true;
+    console.log("Starting draft restoration flow...");
     try {
       await openDB();
 
-      // 1️⃣ Try server first
-      serverDraft = await loadDraft(loggedInMobile);
+      // 1️⃣ Priority 1: Check sessionStorage (Immediately available from login)
+      const sessionDraftStr = sessionStorage.getItem("serverDraft");
+      if (sessionDraftStr) {
+        try {
+          serverDraft = JSON.parse(sessionDraftStr);
+          console.log("Server draft found in session storage.");
+        } catch (e) { console.warn("Session draft parse error"); }
+      }
 
+      // 2️⃣ Priority 2: Fetch from server (If session storage is empty and we're online)
+      if (!serverDraft && navigator.onLine) {
+        serverDraft = await loadDraft(loggedInMobile);
+      }
+
+      // 3️⃣ Attempt restoration of Server/Session draft
       if (serverDraft?.formData) {
         const parsed = typeof serverDraft.formData === "string"
           ? JSON.parse(serverDraft.formData)
           : serverDraft.formData;
 
         await restoreDraftState(parsed);
-
-        // ✅ FIX: Use navigateToStep (internal) instead of goToStep (which may run validators)
         const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
         navigateToStep(stepToRestore);
         toggleExperienceDependentSections();
-        activateAutosave();
+        showToast("Draft restored from cloud", "online");
         return;
       }
 
-      // 2️⃣ Fallback to IndexedDB
+      // 4️⃣ Priority 3: Fallback to Local IndexedDB (When cloud fails or offline)
+      console.log("Checking local IndexedDB for drafts...");
       const localDraft = await loadDraftFromDB();
       if (localDraft) {
+        console.log("Local draft found, restoring...");
         await restoreDraftState(localDraft);
-
-        // ✅ FIX: Use navigateToStep (internal) instead of goToStep
         const stepToRestore = !isNaN(localDraft.step) ? Number(localDraft.step) : 0;
         navigateToStep(stepToRestore);
         toggleExperienceDependentSections();
-        activateAutosave();
+        showToast("Restored from local memory", "offline");
         return;
       }
 
-      // 3️⃣ New Form - Just activate autosave
-      activateAutosave();
+      console.log("No drafts found locally or on server.");
     } catch (err) {
-      console.error("Draft restore failed:", err);
+      console.error("Draft restore process failed:", err);
+    } finally {
+      isRestoring = false; // Allow autosave now
+      activateAutosave();
+      console.log("Initialization complete. Autosave enabled.");
     }
   })();
 
@@ -3257,9 +3275,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   (async () => {
+    // ✅ REMOVED: Automatic clearDraft() when status is "NEW".
+    // This was clearing local work when a user logged in offline.
+    // Drafts should only be cleared upon SUCCESSFUL submission.
     if (formStatus === "NEW") {
       sessionStorage.removeItem("serverDraft");
-      await clearDraft(); // clear IndexedDB draft
     }
 
     updateUI();

@@ -3,10 +3,14 @@ function showToast(message, type = "online") {
   const container = document.getElementById("toastContainer");
   if (!container) return;
   const toast = document.createElement("div");
-  toast.className = `toast ${type} show`;
+  toast.className = `toast ${type}`;
   const icon = type === "online" ? "●" : "○";
   toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
   container.appendChild(toast);
+
+  // Wait 10ms for DOM registration before showing
+  setTimeout(() => toast.classList.add("show"), 10);
+
   setTimeout(() => {
     toast.classList.remove("show");
     setTimeout(() => toast.remove(), 500);
@@ -15,6 +19,11 @@ function showToast(message, type = "online") {
 
 window.addEventListener("online", () => showToast("Connected", "online"));
 window.addEventListener("offline", () => showToast("Working Offline", "offline"));
+
+// Initial check
+if (!navigator.onLine) {
+  setTimeout(() => showToast("Working Offline", "offline"), 1000);
+}
 
 document.getElementById("loginForm").onsubmit = async (e) => {
   e.preventDefault();
