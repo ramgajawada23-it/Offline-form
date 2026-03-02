@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v9";
+const CACHE_NAME = "offline-form-v10";
 
 const FILES = [
   "./",
@@ -55,9 +55,22 @@ self.addEventListener("fetch", event => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then(res => res || fetch(event.request))
-      .catch(() => caches.match("./index.html"))
+    caches.match(event.request, { ignoreSearch: true })
+      .then(cachedResponse => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        return fetch(event.request).catch(() => {
+          // If the network fails AND it's a navigation request (like visiting index.html),
+          // fallback to the cached index.html.
+          if (event.request.mode === "navigate") {
+            return caches.match("./index.html");
+          }
+          // For scripts or styles, letting it fail is better than returning index.html
+          return null;
+        });
+      })
   );
 });
 

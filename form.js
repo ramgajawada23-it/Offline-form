@@ -18,15 +18,37 @@ function getCandidateFullName() {
   const ln = document.getElementById("lastName")?.value || "";
   return `${fn} ${ln}`.trim();
 }
+function showToast(message, type = "online") {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+
+  const icon = type === "online" ? "●" : "○";
+  toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  // Trigger animation
+  setTimeout(() => toast.classList.add("show"), 10);
+
+  // Remove after 4s
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 500);
+  }, 4000);
+}
+
 window.addEventListener("online", () => {
   isOnline = true;
-  console.log("Back online");
-  syncOfflineSubmissions();
+  showToast("Back Online - Syncing your data...", "online");
+  if (typeof syncOfflineSubmissions === 'function') syncOfflineSubmissions();
 });
 
 window.addEventListener("offline", () => {
   isOnline = false;
-  console.log("You are Offline. You can continue filling the form");
+  showToast("Internet Disconnected - Working Offline", "offline");
 });
 
 let lastDraftHash = "";
@@ -469,8 +491,11 @@ async function syncOfflineSubmissions() {
   const pending = await loadOfflineSubmissions();
   if (!pending?.length) return;
 
-  console.log(`Syncing ${pending.length} offline submissions...`);
+  if (pending.length > 0) {
+    showToast(`Syncing ${pending.length} offline application(s)...`, "online");
+  }
 
+  let successCount = 0;
   for (const payload of pending) {
     try {
       const res = await fetch(`${API_BASE}/api/candidates`, {
@@ -481,12 +506,16 @@ async function syncOfflineSubmissions() {
 
       if (res.ok) {
         await removeOfflineSubmission(payload.id);
+        successCount++;
       }
     } catch (e) {
       console.warn("Sync failed for one entry", e);
     }
   }
-  console.log("Offline sync completed");
+
+  if (successCount > 0) {
+    showToast(`Sync Complete: ${successCount} application(s) uploaded`, "online");
+  }
 }
 
 const isFutureDate = d => d && new Date(d) > new Date();
@@ -1033,7 +1062,7 @@ candidateForm?.addEventListener("change", e => {
     ].filter(s => s.value === "Spouse");
 
     if (spouses.length > 1) {
-      alert("Only one spouse is allowed");
+      showToast("Only one spouse is allowed", "offline");
       e.target.value = "";
     }
   }
@@ -1314,7 +1343,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ).length;
 
       if (totalRows <= 1) {
-        alert("At least one education record is required");
+        showToast("At least one education record is required", "offline");
         return;
       }
 
@@ -1557,14 +1586,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1️⃣ Format Validation
     const validTypes = ["image/png", "image/jpeg", "image/jpg"];
     if (!validTypes.includes(file.type)) {
-      alert("Invalid format! Accepted: PNG, JPG, JPEG");
+      showToast("Invalid format! Accepted: PNG, JPG, JPEG", "offline");
       sigFileInput.value = "";
       return;
     }
 
     // 2️⃣ Size Validation (2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert("File too large! Max size: 2MB");
+      showToast("File too large! Max size: 2MB", "offline");
       sigFileInput.value = "";
       return;
     }
@@ -3194,7 +3223,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function submitFormOnlineOrOffline(payload) {
     if (!navigator.onLine) {
       await saveOffline(payload);
-      alert("Offline: submission saved");
+      showToast("Submission Saved Offline", "offline");
+      setTimeout(() => { window.location.href = "login.html"; }, 2000);
       return;
     }
 
@@ -3213,15 +3243,16 @@ document.addEventListener("DOMContentLoaded", () => {
       // Update status for immediate transition
       sessionStorage.setItem("formStatus", "SUBMITTED");
 
-      alert("Thank you for submitting the form");
-      window.location.href = "login.html";
+      showToast("Application Submitted Successfully!", "online");
+      setTimeout(() => { window.location.href = "login.html"; }, 2000);
 
     } catch (err) {
       console.warn("Submit failed, saving offline", err);
 
       // ✅ FALLBACK
       await saveOffline(payload);
-      alert("Saved offline. Will sync when back online.");
+      showToast("Saved offline. Will sync when back online.", "offline");
+      setTimeout(() => { window.location.href = "login.html"; }, 2000);
     }
   }
 
