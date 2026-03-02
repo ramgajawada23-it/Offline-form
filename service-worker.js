@@ -1,4 +1,4 @@
-const CACHE_NAME = "offline-form-v8";
+const CACHE_NAME = "offline-form-v9";
 
 const FILES = [
   "./",
@@ -8,14 +8,19 @@ const FILES = [
   "./login.js",
   "./form.js",
   "./offline-db.js",
+  "./manifest.json",
   "./signature.png",
   "./BG1.jpg",
   "./BG2.jpg",
   "./BG3.jpg",
   "./BG4.1.jpg",
+  "./BG4.2.jpg",
+  "./BG4.jpg",
   "./logo.png",
   "./sideimg.jpg",
-  "./sideimg1.jpg"
+  "./sideimg1.jpg",
+  "./loginbg.png",
+  "./loginbg1.png"
 ];
 
 /* ================= INSTALL ================= */

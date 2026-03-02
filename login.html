@@ -1,15 +1,18 @@
 <!-- //login.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Login</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json">
 </head>
+
 <body>
 
   <div class="login-wrapper">
-    
+
     <!-- LEFT IMAGE SECTION -->
     <div class="login-left">
       <img src="loginbg1.png" alt="Login Illustration" />
@@ -24,13 +27,7 @@
 
         <div class="form-field">
           <label for="loginMobile">Mobile Number</label>
-          <input
-            type="text"
-            id="loginMobile"
-            maxlength="10"
-            placeholder="Enter mobile number"
-            required
-          />
+          <input type="text" id="loginMobile" maxlength="10" placeholder="Enter mobile number" required />
           <small class="error-text"></small>
         </div>
 
@@ -42,5 +39,15 @@
   </div>
 
   <script src="login.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log('Service Worker registered', reg))
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
+    }
+  </script>
 </body>
+
 </html>
