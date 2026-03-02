@@ -41,7 +41,7 @@
         <!-- Hidden signature fields -->
         <input type="file" id="signatureFile" style="display: none;" accept=".png,.jpg,.jpeg">
         <input type="hidden" id="signatureBase64" name="signatureBase64">
-        
+
         <!-- STEP PROGRESS BAR -->
         <div class="stepper">
           <div class="stepper-line"></div>
@@ -296,7 +296,10 @@
                 <tr>
                   <td class="center">
                     <button type="button" class="btn-delete" onclick="removeFamilyRow(this)">
-                      <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                      <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;">
+                        <path fill="currentColor"
+                          d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+                      </svg>
                     </button>
                   </td>
 
@@ -754,7 +757,10 @@
                     <td><input type="number" id="monthlyOthers" name="monthlyOthers"></td>
                     <td>Others</td>
                     <td><input type="number" id="statutoryOthers" name="statutoryOthers"></td> -->
-                    <td></td><td></td><td></td><td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                   </tr>
                   <tr>
                     <td>House Rent Allowance</td>
@@ -771,9 +777,12 @@
             <br>
 
             <div class="grid-3">
-              <div class="form-field"><input type="number" id="totalA" name="totalA" placeholder="Total (a)" readonly></div>
-              <div class="form-field"><input type="number" id="totalB" name="totalB" placeholder="Total (b)" readonly></div>
-              <div class="form-field"><input type="number" id="totalC" name="totalC" placeholder="Total (c)" readonly></div>
+              <div class="form-field"><input type="number" id="totalA" name="totalA" placeholder="Total (a)" readonly>
+              </div>
+              <div class="form-field"><input type="number" id="totalB" name="totalB" placeholder="Total (b)" readonly>
+              </div>
+              <div class="form-field"><input type="number" id="totalC" name="totalC" placeholder="Total (c)" readonly>
+              </div>
             </div>
 
             <div class="grid-2">
@@ -870,7 +879,8 @@
 
             <div class="grid-2">
               <div class="form-field">
-                <input type="number" placeholder="How soon can you join (Days)" name="joiningDays">
+                <input type="number" placeholder="How soon can you join (Days)" name="joiningDays" id="joiningDays"
+                  min="0" max="99">
               </div>
 
               <div class="form-field">

@@ -535,7 +535,7 @@ window.addFamilyRow = () => {
         </select>
       </td>
       <td><input type="text" name="family[${index}][name]"></td>
-      <td><input type="date" name="family[${index}][dob]"></td>
+      <td><input type="date" name="family[${index}][dob]" max="${new Date().toISOString().split("T")[0]}"></td>
       <td>
         <select name="family[${index}][dependent]">
           <option value="">Select</option>
@@ -904,8 +904,8 @@ function fillMediclaimFamilyDetails(sourceData = null) {
         gender = "Female";
         break;
       case "Spouse":
-        const candidateGender = document.querySelector("input[name='gender']:checked")?.value || 
-                                (sourceData ? sourceData.gender : "");
+        const candidateGender = document.querySelector("input[name='gender']:checked")?.value ||
+          (sourceData ? sourceData.gender : "");
         if (candidateGender === "Male") gender = "Female";
         else if (candidateGender === "Female") gender = "Male";
         break;
@@ -1189,6 +1189,12 @@ document.addEventListener("DOMContentLoaded", () => {
   stepperSteps = document.querySelectorAll(".stepper-step");
   sidebarItems = document.querySelectorAll(".step-menu li");
 
+  // Prevent future dates on all date inputs
+  const todayStr = new Date().toISOString().split("T")[0];
+  document.querySelectorAll('input[type="date"]').forEach(el => {
+    el.setAttribute("max", todayStr);
+  });
+
   // Stepper click
   stepperSteps.forEach((circle, index) => {
     circle.addEventListener("click", () => {
@@ -1374,6 +1380,15 @@ document.addEventListener("DOMContentLoaded", () => {
       this.value = this.value.replace(/\D/g, "").slice(0, 8);
     });
   });
+
+  const joiningDays = document.getElementById("joiningDays");
+  if (joiningDays) {
+    joiningDays.addEventListener("input", function () {
+      let v = this.value.replace(/\D/g, "");
+      if (v.length > 2) v = v.slice(0, 2);
+      this.value = v;
+    });
+  }
 
 
   function stopAutosave() {
@@ -1836,6 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
   dobInput?.addEventListener("change", () => {
     if (!dobInput.value) {
       ageInput.value = "";
+      if (marriageDate) marriageDate.removeAttribute("min");
       return;
     }
     const dob = new Date(dobInput.value);
@@ -1845,6 +1861,13 @@ document.addEventListener("DOMContentLoaded", () => {
       age--;
     }
     ageInput.value = age >= 0 ? age : "";
+
+    // Set min marriage date (DOB + 18 years)
+    if (marriageDate) {
+      const minMarriage = new Date(dob);
+      minMarriage.setFullYear(minMarriage.getFullYear() + 18);
+      marriageDate.min = minMarriage.toISOString().split("T")[0];
+    }
   });
 
   maritalStatus?.addEventListener("change", toggleMaritalFields);
@@ -2031,11 +2054,22 @@ document.addEventListener("DOMContentLoaded", () => {
       showError(state, "State is required", silent);
       ok = false;
     }
-    // ----- Marriage Date ≤ Today -----
+    // ----- Marriage Date ≤ Today & Minimum Age 18 -----
     if (maritalStatus.value === "Married" && marriageDate.value) {
       if (isFutureDate(marriageDate.value)) {
         showError(marriageDate, "Marriage date cannot be future", silent);
         ok = false;
+      } else if (dob.value) {
+        const dobVal = new Date(dob.value);
+        const mDateVal = new Date(marriageDate.value);
+        let mAge = mDateVal.getFullYear() - dobVal.getFullYear();
+        if (mDateVal < new Date(mDateVal.getFullYear(), dobVal.getMonth(), dobVal.getDate())) {
+          mAge--;
+        }
+        if (mAge < 18) {
+          showError(marriageDate, "Minimum age for marriage is 18", silent);
+          ok = false;
+        }
       }
     }
 
@@ -2602,18 +2636,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const toDateEl = step.querySelector("#expTo");
 
     if (hasExperience && fromDateEl && toDateEl) {
-
       if (!fromDateEl.value) {
         showError(fromDateEl, "From date is required", silent);
+        ok = false;
+      } else if (isFutureDate(fromDateEl.value)) {
+        showError(fromDateEl, "From date cannot be in the future", silent);
         ok = false;
       }
 
       if (!toDateEl.value) {
         showError(toDateEl, "To date is required", silent);
         ok = false;
+      } else if (isFutureDate(toDateEl.value)) {
+        showError(toDateEl, "To date cannot be in the future", silent);
+        ok = false;
       }
 
       if (fromDateEl.value && toDateEl.value) {
+
         const fromDate = new Date(fromDateEl.value);
         const toDate = new Date(toDateEl.value);
 
@@ -2885,6 +2925,18 @@ document.addEventListener("DOMContentLoaded", () => {
           if (el.offsetParent === null) return;
           if (isSkippable(el)) return;
 
+          if (el.id === "joiningDays") {
+            const val = parseInt(el.value);
+            if (!el.value.trim()) {
+              showError(el, "Required", silent);
+              ok = false;
+            } else if (isNaN(val) || val < 0 || val > 99) {
+              showError(el, "Must be between 0 and 99", silent);
+              ok = false;
+            }
+            return;
+          }
+
           if (!el.value.trim()) {
             showError(el, "Required", silent);
             ok = false;
@@ -2957,7 +3009,7 @@ document.addEventListener("DOMContentLoaded", () => {
         step5,
         "Please correct the highlighted errors before continuing"
       );
-      
+
       const errorElements = Array.from(step5.querySelectorAll(".input-error"));
       console.warn("Validation failed for step: 4. The following fields have errors:", errorElements.map(e => e.name || e.id || "Unknown field"));
 
@@ -3087,7 +3139,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateNextVisualState();
   });
-  
+
   /* ================= SUBMIT ================= */
   document.getElementById("candidateForm").onsubmit = async e => {
     e.preventDefault();
