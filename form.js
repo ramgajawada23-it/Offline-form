@@ -74,7 +74,7 @@ async function saveDraft(draft) {
     const parsed = typeof draft.formData === "string"
       ? JSON.parse(draft.formData)
       : draft.formData;
-    await saveDraftToDB(parsed);
+    await saveDraftToDB(parsed, draft.mobile);
   } catch {
     console.warn("Invalid formData JSON, skipping local save");
   }
@@ -1295,13 +1295,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const stepToRestore = !isNaN(parsed.step) ? Number(parsed.step) : 0;
         navigateToStep(stepToRestore);
         toggleExperienceDependentSections();
+
+        // 🚀 CRITICAL: Cache the server/session draft locally 
+        // So if the user refershes while offline later, it's already there!
+        await saveDraftToDB(parsed, loggedInMobile);
+
         showToast("Draft restored from cloud", "online");
         return;
       }
 
       // 4️⃣ Priority 3: Fallback to Local IndexedDB (When cloud fails or offline)
-      console.log("Checking local IndexedDB for drafts...");
-      const localDraft = await loadDraftFromDB();
+      console.log(`Checking local memory for mobile: ${loggedInMobile}...`);
+      const localDraft = await loadDraftFromDB(loggedInMobile);
       if (localDraft) {
         console.log("Local draft found, restoring...");
         await restoreDraftState(localDraft);
@@ -3256,7 +3261,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) throw new Error("API not available");
 
       // ✅ SUCCESS
-      await clearDraft();
+      await clearDraft(loggedInMobile);
 
       // Update status for immediate transition
       sessionStorage.setItem("formStatus", "SUBMITTED");

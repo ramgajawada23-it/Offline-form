@@ -52,19 +52,21 @@ function openDB() {
 }
 
 // ================= DRAFT =================
-async function saveDraftToDB(data) {
+async function saveDraftToDB(data, mobile) {
+  if (!mobile) return;
   const dbRef = await openDB();
   if (!dbRef) return;
 
   return new Promise(resolve => {
     const tx = dbRef.transaction(DRAFT_STORE, "readwrite");
-    tx.objectStore(DRAFT_STORE).put(data, DRAFT_KEY);
+    tx.objectStore(DRAFT_STORE).put(data, mobile);
     tx.oncomplete = () => resolve();
     tx.onerror = () => resolve();
   });
 }
 
-async function loadDraftFromDB() {
+async function loadDraftFromDB(mobile) {
+  if (!mobile) return null;
   const dbRef = await openDB();
   if (!dbRef) return null;
 
@@ -72,20 +74,21 @@ async function loadDraftFromDB() {
     const req = dbRef
       .transaction(DRAFT_STORE)
       .objectStore(DRAFT_STORE)
-      .get(DRAFT_KEY);
+      .get(mobile);
 
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => resolve(null);
   });
 }
 
-async function clearDraft() {
+async function clearDraft(mobile) {
+  if (!mobile) return;
   const dbRef = await openDB();
   if (!dbRef) return;
 
   return new Promise(resolve => {
     const tx = dbRef.transaction(DRAFT_STORE, "readwrite");
-    tx.objectStore(DRAFT_STORE).delete(DRAFT_KEY);
+    tx.objectStore(DRAFT_STORE).delete(mobile);
     tx.oncomplete = () => resolve();
     tx.onerror = () => resolve();
   });
